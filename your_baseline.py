@@ -18,13 +18,13 @@ env_name = "highway-fast-v0"  # We use the 'fast' env just for faster training, 
 env = gymnasium.make(env_name,
                      config={
                         'observation':{
-                            'type': 'OccupancyGrid'
+                            'type': 'Kinematics'
                         },
 
                         'action': {
                             'type': 'DiscreteMetaAction'
                         },
-
+                        'lanes_count': 3,
                         'duration': 40, "vehicles_count": 50},
                         render_mode = 'human'
                         )
