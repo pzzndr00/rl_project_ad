@@ -36,6 +36,12 @@ for t in range(MAX_STEPS):
     raise NotImplementedError
 
     # Hint: take a look at the docs to see the difference between 'done' and 'truncated'
+    # 'truncated' is true when the episodes terminates because of external factor (like time limit has
+    # been reached when time is not part of the state space)
+    # 'done' is true when the episode has terminated because the agent has entered
+    # a terminal state (like car crash)
+    # https://farama.org/Gymnasium-Terminated-Truncated-Step-API 
+
     next_state, reward, done, truncated, _ = env.step(action)
     next_state = next_state.reshape(-1)
 
