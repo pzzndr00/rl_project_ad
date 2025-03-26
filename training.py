@@ -6,9 +6,9 @@ import random
 
 
 # Set the seed and create the environment
-np.random.seed(0)
-random.seed(0)
-torch.manual_seed(0)
+np.random.seed(2119275)
+random.seed(2119275)
+torch.manual_seed(2119275)
 
 MAX_STEPS = int(2e4)  # This should be enough to obtain nice results, however feel free to change it
 env_name = "highway-fast-v0"  # We use the 'fast' env just for faster training, if you want you can use "highway-v0"

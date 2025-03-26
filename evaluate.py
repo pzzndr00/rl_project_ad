@@ -6,9 +6,9 @@ import random
 
 
 # Set the seed and create the environment
-np.random.seed(0)
-random.seed(0)
-torch.manual_seed(0)
+np.random.seed(2119275)
+random.seed(2119275)
+torch.manual_seed(2119275)
 
 env_name = "highway-v0"
 
