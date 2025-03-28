@@ -7,9 +7,12 @@ import gymnasium
 import highway_env
 # import os
 
+# TODO substitute all returns and references to actions with an enumeration if not already present in the library
 
 def baseline_agent(env, obs, lanes_count):
     
+    # return 4
+
     available_actions = env.unwrapped.get_available_actions() # unwrapped is necessary for some reason
     # print(available_actions)
     ego = obs[1]
@@ -58,7 +61,7 @@ def baseline_agent(env, obs, lanes_count):
     # c_cars_b = np.array()
     if np.any(c_cars):
         c_cars_a = np.array([c_cars[i] for i in range(c_cars.shape[0]) if c_cars[i, 1] >= 0]) # cars ahead
-        if (not np.any(c_cars_a)) or np.all(c_cars_a[:,1] > 1.2*th_x):
+        if (not np.any(c_cars_a)) or np.all(c_cars_a[:,1] > 1.15*th_x):
             c_lane_free_a = True # current lane free ahead
         
         c_cars_b = np.array([c_cars[i] for i in range(c_cars.shape[0]) if c_cars[i, 1] < 0]) # cars behind
@@ -110,7 +113,7 @@ def baseline_agent(env, obs, lanes_count):
             c_cars_a.reshape(-1, 7)
             closest_ahead = np.argmin(c_cars_a[:, 1])
             if c_cars_a[closest_ahead, 1] < 0.25 * th_x and c_cars_a[closest_ahead, 3] < 0:
-
+                # print('emergency escape')
                 if 2 in available_actions and 0 in available_actions:
                     r_cars.reshape(-1, 7)
                     l_cars.reshape(-1, 7)
@@ -118,8 +121,12 @@ def baseline_agent(env, obs, lanes_count):
                         return 2
                     else: return 0
                 
-                if not 2 in available_actions: return 0
-                if not 0 in available_actions: return 3
+                if not 2 in available_actions:
+                    # print('going left because right not available')
+                    return 0
+                if not 0 in available_actions:
+                    # print('going right because left not available')
+                    return 2
                 
     
     
@@ -137,7 +144,7 @@ random.seed(2119275)
 torch.manual_seed(2119275)
 
 MAX_STEPS = int(2e4)  # This should be enough to obtain nice results, however feel free to change it
-env_name = "highway-v0" #"highway-fast-v0"  # We use the 'fast' env just for faster training, if you want you can use "highway-v0"
+env_name = "highway-fast-v0" #"highway-fast-v0"  # We use the 'fast' env just for faster training, if you want you can use "highway-v0"
 
 env = gymnasium.make(env_name,
                      config={
@@ -152,7 +159,7 @@ env = gymnasium.make(env_name,
                         },
                         'lanes_count': 3,
                         'absolute': False,
-                        'duration': 40, "vehicles_count": 50},
+                        'duration': 100, "vehicles_count": 50},
                         render_mode = 'human'
                         )
 
@@ -164,7 +171,7 @@ episode_steps = 0
 episode_return = 0
 
 
-while episode <= 10:
+while episode <= 25:
     episode_steps += 1
 
     # action selection
