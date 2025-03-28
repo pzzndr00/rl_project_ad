@@ -10,8 +10,6 @@ import highway_env
 # TODO substitute all returns and references to actions with an enumeration if not already present in the library
 
 def baseline_agent(env, obs, lanes_count):
-    
-    # return 4
 
     available_actions = env.unwrapped.get_available_actions() # unwrapped is necessary for some reason
     # print(available_actions)
@@ -19,7 +17,7 @@ def baseline_agent(env, obs, lanes_count):
     obs_noego = obs[1:]
     lane_w = 1 / lanes_count # the width of the lane is normalized wrt the number of lanes
     eps = 0 # lane tollerance (cars while changing lanes can actually occupy two lanes at the same time) NOT NECESSARY, hard to tune
-    th_x = 0.125
+    th_x = 0.115
     
     # boolean variables used to determine wich lanes are free
     # right current and left are referred to the ego car position
@@ -61,7 +59,7 @@ def baseline_agent(env, obs, lanes_count):
     # c_cars_b = np.array()
     if np.any(c_cars):
         c_cars_a = np.array([c_cars[i] for i in range(c_cars.shape[0]) if c_cars[i, 1] >= 0]) # cars ahead
-        if (not np.any(c_cars_a)) or np.all(c_cars_a[:,1] > 1.15*th_x):
+        if (not np.any(c_cars_a)) or np.all(c_cars_a[:,1] > 1.1*th_x):
             c_lane_free_a = True # current lane free ahead
         
         c_cars_b = np.array([c_cars[i] for i in range(c_cars.shape[0]) if c_cars[i, 1] < 0]) # cars behind
@@ -134,7 +132,8 @@ def baseline_agent(env, obs, lanes_count):
     return 1
 
 
-
+def cheat_baseline():
+    return 4
 
 
 
