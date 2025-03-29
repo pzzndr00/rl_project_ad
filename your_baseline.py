@@ -36,7 +36,7 @@ def baseline_agent(env, obs, lanes_count):
     obs_noego = obs[1:]
     lane_w = 1 / lanes_count # the width of the lane is normalized wrt the number of lanes
     eps = 0 # lane tollerance (cars while changing lanes can actually occupy two lanes at the same time) NOT NECESSARY, hard to tune
-    th_x = 0.115
+    th_x = 0.125
     
     # boolean variables used to determine wich lanes are free
     # right current and left are referred with respect to the ego car position, the current lane divided in ahead and behind
