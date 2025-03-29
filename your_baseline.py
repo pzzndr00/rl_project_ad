@@ -109,34 +109,34 @@ def baseline_agent(env, obs, lanes_count):
         return actions['LANE_LEFT']    # go left
     
     # if all the lanes are occupied and ther is no car approaching from behind then
-    if c_lane_free_b:
+    if c_lane_free_b: # actually it never happens to have a car approaching fast from behind
         # if ego can go slower then
         if actions['SLOWER'] in available_actions:
             return actions['SLOWER'] # go slower
-        # otherwise: ego can't go any slower then
-        else:
-            c_cars_a.reshape(-1, 7)
-            closest_ahead = np.argmin(c_cars_a[:, features['x']]) # extracting information about the closest car ahead
-            # if the car ahead is very close and it's going slower than ego (that if in this section is already at minimum speed) then
-            # it's necessary to try to avoid the collision 
-            if c_cars_a[closest_ahead, features['x']] < 0.25 * th_x and c_cars_a[closest_ahead, features['vx']] < 0:
-                # if both LANE_RIGHT and LANE_LEFT available then chose the lane which cars in it are further
-                if actions['LANE_RIGHT'] in available_actions and actions['LANE_LEFT'] in available_actions:
-                    r_cars.reshape(-1, 7)
-                    l_cars.reshape(-1, 7)
-                    if np.min(abs(l_cars[:, features['x']])) < np.min(abs(r_cars[:, features['x']])):
-                        return actions['LANE_RIGHT']
-                    else: return actions['LANE_LEFT']
-
-                # if LANE_RIGHT not available then just escape going in the left lane
-                if not actions['LANE_RIGHT'] in available_actions:
-                    # print('going left because right not available')
-                    return actions['LANE_LEFT']
-                
-                # if LANE_LEFT not available then just escape going in the right lane
-                if not actions['LANE_LEFT'] in available_actions:
-                    # print('going right because left not available')
+    
+    # if ego can't go any slower then
+    if not actions['SLOWER'] in available_actions:
+        c_cars_a.reshape(-1, 7)
+        closest_ahead = np.argmin(c_cars_a[:, features['x']]) # extracting information about the closest car ahead
+        # if the car ahead is very close and it's going slower than ego (that if in this section is already at minimum speed) then
+        # it's necessary to try to avoid the collision 
+        if c_cars_a[closest_ahead, features['x']] < 0.35 * th_x and c_cars_a[closest_ahead, features['vx']] < 0:
+            # if both LANE_RIGHT and LANE_LEFT available then chose the lane which cars in it are further
+            if actions['LANE_RIGHT'] in available_actions and actions['LANE_LEFT'] in available_actions:
+                r_cars.reshape(-1, 7)
+                l_cars.reshape(-1, 7)
+                if np.min(abs(l_cars[:, features['x']])) < np.min(abs(r_cars[:, features['x']])):
                     return actions['LANE_RIGHT']
+                else: return actions['LANE_LEFT']
+
+            # if LANE_RIGHT not available then just escape going in the left lane
+            if not actions['LANE_RIGHT'] in available_actions:
+                # print('going left because right not available')
+                return actions['LANE_LEFT']                
+            # if LANE_LEFT not available then just escape going in the right lane
+            if not actions['LANE_LEFT'] in available_actions:
+                # print('going right because left not available')
+                return actions['LANE_RIGHT']
 
     # else
     return actions['IDLE']
