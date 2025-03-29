@@ -168,7 +168,7 @@ env = gymnasium.make(env_name,
                         },
                         'lanes_count': 3,
                         'absolute': False,
-                        'duration': 100, "vehicles_count": 50},
+                        'duration': 40, "vehicles_count": 50},
                         render_mode = 'human'
                         )
 
@@ -180,7 +180,7 @@ episode_steps = 0
 episode_return = 0
 
 
-while episode <= 25:
+while episode <= 10:
     episode_steps += 1
 
     # baseline action selection
