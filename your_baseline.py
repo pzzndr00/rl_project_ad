@@ -7,7 +7,22 @@ import gymnasium
 import highway_env
 
 def baseline_agent(env, obs, lanes_count):
+    """
+    Baseline agent (algorithmic) that will be used as a comparison for the trained RL agent
 
+    Parameters
+    ---------
+
+    env: the gymnasium environment representing a highway_env environment (either "highway-v0" or "highway-fast-v0")
+    obs: the current state observation (normalized distances)
+    lanes_count: the number of lanes for the environment
+
+    Returns
+    -------
+
+    action: the selected action from one of the following {'LANE_LEFT': 0, 'IDLE':1, 'LANE_RIGHT':2, 'FASTER':3, 'SLOWER':4}
+
+    """
     available_actions = env.unwrapped.get_available_actions() # unwrapped is necessary to access the highway_env object
 
     # dictionaries defined below help with the interpretability of the code
@@ -109,7 +124,7 @@ def baseline_agent(env, obs, lanes_count):
         return actions['LANE_LEFT']    # go left
     
     # if all the lanes are occupied and ther is no car approaching from behind then
-    if c_lane_free_b: # actually it never happens to have a car approaching fast from behind
+    if c_lane_free_b: # actually never happens to have a car approaching from behind
         # if ego can go slower then
         if actions['SLOWER'] in available_actions:
             return actions['SLOWER'] # go slower
@@ -143,6 +158,12 @@ def baseline_agent(env, obs, lanes_count):
 
 
 def cheat_baseline():
+    """
+    Cheating baseline for highway_env (either "highway-v0" or "highway-fast-v0"), always returns 4 that corresponds to the action 'SLOWER'
+    Even if is very simple it 'breakes' the game because it never really happens to find a car approaching from behind causing a collision
+    this means that the only possible cause for collision is when a car in the same lane goes slower than the minimum possible speed of the
+    ego car (the agent). This in the end results in a overall higher episode return average than the more greedy (and complex) 'baseline_policy' 
+    """
     return 4
 
 
