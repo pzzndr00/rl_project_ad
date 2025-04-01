@@ -212,7 +212,7 @@ while episode <= EPISODES:
 
     episode_return += reward
     env.render()
-    # time.sleep(1)
+
     if done or truncated:
         print(f"Episode Num: {episode} Episode T: {episode_steps} Return: {episode_return:.3f}, Crash: {done}")
 
