@@ -77,7 +77,7 @@ LR = 1e-4
 MAX_STEPS = int(2e4)  # This should be enough to obtain nice results, however feel free to change it
 LANES = 3
 
-C = 25
+C = 1
 ################################################################################
 
 
@@ -130,7 +130,9 @@ training_steps = 0
 # training data arrays initialization
 loss_values_history = []
 episode_return_history = []
-episode_average_reward_history = []
+
+episode_avg_reward = 0
+episode_avg_reward_history = []
 
 # Training loop
 for t in tqdm.tqdm(range(MAX_STEPS)):
@@ -157,7 +159,7 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
     # done: the agent entered in a terminal state (in this case crash)
     # truncated: the episode stops for external reasons (reached max duration of the episode)
     next_state, reward, done, truncated, _ = env.step(action)
-
+    episode_avg_reward += reward
     next_state = np.squeeze(next_state.reshape(-1))
     next_state_tensor = torch.from_numpy(next_state)
     next_state_tensor = next_state_tensor.to(device=device)
@@ -232,6 +234,8 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
 
         # Save training information and model parameters
         episode_return_history.append(episode_return)
+        episode_avg_reward_history.append(episode_avg_reward/episode_steps)
+        episode_avg_reward = 0
 
         state, _ = env.reset()
         state = state.reshape(-1)
@@ -247,7 +251,7 @@ torch.save(agent, 'trained_DQN_agent.pt')
 print('>>> TRAINED DQN MODEL SAVED')
 
 # training data plot
-fig, (loss_plot, returns_plot) = plt.subplots(1, 2)
+fig, (loss_plot, returns_plot, rewards_plot) = plt.subplots(1, 3)
 
 fig.suptitle('Training data plot')
 
@@ -257,6 +261,9 @@ loss_plot.plot(loss_values_history)
 
 returns_plot.set_title("RETURNS")
 returns_plot.plot(episode_return_history)
+
+rewards_plot.set_title("AVG REWARDS")
+rewards_plot.plot(episode_avg_reward_history)
 
 plt.show()
 
