@@ -7,6 +7,7 @@ import random
 import math
 import copy
 from collections import namedtuple, deque
+import tqdm
 
 import agent as ag
 
@@ -24,7 +25,7 @@ device = torch.device(
     "cpu"
 )
 
-print(f'<<< DEVICE =  {device} >>>')
+print(f'>>> DEVICE =  {device}')
 
 
 # Replay buffer ################################################################
@@ -97,10 +98,10 @@ env = gymnasium.make(env_name,
                         'lanes_count': LANES,
                         'absolute': False,
                         'duration': 40, "vehicles_count": 50},
-                        render_mode = 'human'
+                        #render_mode = 'human'
                         )
 
-print('<<< ENVIRONMENT INITIALIZED >>>')
+print('>>> ENVIRONMENT INITIALIZED')
 
 # Initialize your model
 agent = ag.AgentModel(input_size=25, output_size=5)
@@ -114,7 +115,7 @@ Q_hat.to(device=device)
 
 # initialization of the replay buffer
 replay_buffer = memory(MAX_STEPS)
-print('<<< REPLAY BUFFER INITIALIZED >>>')
+print('>>> REPLAY BUFFER INITIALIZED')
 
 state, _ = env.reset()
 state = np.squeeze(state.reshape(-1))
@@ -132,7 +133,7 @@ episode_return_history = []
 episode_average_reward_history = []
 
 # Training loop
-for t in range(MAX_STEPS):
+for t in tqdm.tqdm(range(MAX_STEPS)):
     episode_steps += 1
     # Select the action to be performed by the agent
     
@@ -141,12 +142,14 @@ for t in range(MAX_STEPS):
 
     # creating a torch state tensor to feed to the agent's neural network
     state_tensor = torch.from_numpy(state)
+    state_tensor = state_tensor.to(device=device)
+    # print(f'>>> {state_tensor.device}')
     Q_state_a = agent(state_tensor)
     
     # choosing an action following an epsilon greedy policy
     with torch.no_grad(): # no need to compute the gradient at this point
         available_actions = env.unwrapped.get_available_actions()
-    action = ag.eps_greedy_policy(actions_values = Q_state_a.detach().numpy(), available_actions = available_actions, eps = eps)
+    action = ag.eps_greedy_policy(actions_values = Q_state_a.cpu().detach().numpy(), available_actions = available_actions, eps = eps)
     # print(f'action at step {t} is: {action}')
 
 
@@ -157,7 +160,7 @@ for t in range(MAX_STEPS):
 
     next_state = np.squeeze(next_state.reshape(-1))
     next_state_tensor = torch.from_numpy(next_state)
-    next_state_tensor.to(device=device)
+    next_state_tensor = next_state_tensor.to(device=device)
 
     # Store transition in memory and train your model
     
@@ -169,13 +172,14 @@ for t in range(MAX_STEPS):
 
     # TRAINING #################################################################
     if t >= BATCH_SIZE:
+        if training_steps == 0: print('>>> TRAINING STARTED')
 
         batch = replay_buffer.sample(batch_size = BATCH_SIZE)
 
         batch_zip = Transition(*zip(*batch))
-        y = torch.zeros(BATCH_SIZE)
-        y.to(device=device)
 
+        y = torch.zeros(BATCH_SIZE)
+        y = y.to(device=device)
 
         state_batch = torch.cat(batch_zip.state).reshape((-1, STATE_DIMENSIONALITY))       
         action_batch = batch_zip.action
@@ -184,16 +188,16 @@ for t in range(MAX_STEPS):
         done_batch = batch_zip.done
 
         # moving tensors to device
-        #state_batch.to(device=device)
+        state_batch = state_batch.to(device=device)
         #action_batch.to(device=device)
         #reward_batch.to(device=device)
-        next_state_batch.to(device=device)
+        next_state_batch = next_state_batch.to(device=device)
         #done_batch.to(device=device)
 
         for i in range(BATCH_SIZE):
             
             Q_values = torch.zeros(BATCH_SIZE)
-            Q_values.to(device= device)
+            Q_values = Q_values.to(device= device)
             # expected Q function
             # there are more efficient ways to do this
             if done_batch[i]:
@@ -208,7 +212,7 @@ for t in range(MAX_STEPS):
         # computation of the loss and training step
         loss_function = nn.MSELoss()
         loss = loss_function(Q_values, target = y)
-        loss_values_history.append(loss.detach().numpy())
+        loss_values_history.append(loss.cpu().detach().numpy())
         # print(f'loss at iteration t = {loss}')
 
         optimizer.zero_grad()
@@ -224,7 +228,7 @@ for t in range(MAX_STEPS):
     ############################################################################
 
     if done or truncated:
-        print(f"Total T: {t} Episode Num: {episode} Episode T: {episode_steps} Return: {episode_return:.3f}")
+        #print(f"Total T: {t} Episode Num: {episode} Episode T: {episode_steps} Return: {episode_return:.3f}")
 
         # Save training information and model parameters
         episode_return_history.append(episode_return)
@@ -235,13 +239,14 @@ for t in range(MAX_STEPS):
         episode_steps = 0
         episode_return = 0
 
-env.close()
 
+
+print('>>> TRAINING ENDED')
 # saving the trained model for evaluation
 torch.save(agent, 'trained_DQN_agent.pt') 
+print('>>> TRAINED DQN MODEL SAVED')
 
 # training data plot
-
 fig, (loss_plot, returns_plot) = plt.subplots(1, 2)
 
 fig.suptitle('Training data plot')
@@ -256,3 +261,6 @@ returns_plot.plot(episode_return_history)
 plt.show()
 
 
+env.close()
+
+print('>>> PROGRAM TERMINATED')
