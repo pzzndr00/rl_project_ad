@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import random
 
-class agent_model(nn.Module):
+class AgentModel(nn.Module):
 
     def __init__(self, input_size, output_size, hidden_size1 = 128, hidden_size2 =128):
         """
@@ -14,7 +14,7 @@ class agent_model(nn.Module):
         
 
         """
-        super(agent_model, self).__init__()
+        super(AgentModel, self).__init__()
         
         self.fc1 = nn.Linear(input_size, hidden_size1)
         self.fc2 = nn.Linear(hidden_size1, hidden_size2)
@@ -27,11 +27,15 @@ class agent_model(nn.Module):
         return out
 
 
+    def act_greedely(self, state):
+        raise NotImplemented
+        return
+    
 def eps_greedy_policy(actions_values, available_actions, eps):
 
     u = random.random()
 
-    if u < eps:
+    if u < 1 - eps:
         return np.argmax(actions_values)
     else:
         return random.choice(available_actions)
