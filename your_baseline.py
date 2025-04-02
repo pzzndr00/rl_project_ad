@@ -7,7 +7,22 @@ import gymnasium
 import highway_env
 
 def baseline_agent(env, obs, lanes_count):
+    """
+    Baseline agent (algorithmic) that will be used as a comparison for the trained RL agent
 
+    Parameters
+    ---------
+
+    env: the gymnasium environment representing a highway_env environment (either "highway-v0" or "highway-fast-v0")
+    obs: the current state observation (normalized distances)
+    lanes_count: the number of lanes for the environment
+
+    Returns
+    -------
+
+    action: the selected action from one of the following {'LANE_LEFT': 0, 'IDLE':1, 'LANE_RIGHT':2, 'FASTER':3, 'SLOWER':4}
+
+    """
     available_actions = env.unwrapped.get_available_actions() # unwrapped is necessary to access the highway_env object
 
     # dictionaries defined below help with the interpretability of the code
@@ -109,22 +124,22 @@ def baseline_agent(env, obs, lanes_count):
         return actions['LANE_LEFT']    # go left
     
     # if all the lanes are occupied and ther is no car approaching from behind then
-    if c_lane_free_b: # actually it never happens to have a car approaching fast from behind
+    if c_lane_free_b: # actually never happens to have a car approaching from behind
         # if ego can go slower then
         if actions['SLOWER'] in available_actions:
             return actions['SLOWER'] # go slower
     
     # if ego can't go any slower then
     if not actions['SLOWER'] in available_actions:
-        c_cars_a.reshape(-1, 7)
+        c_cars_a.reshape(-1, 5)
         closest_ahead = np.argmin(c_cars_a[:, features['x']]) # extracting information about the closest car ahead
         # if the car ahead is very close and it's going slower than ego (that if in this section is already at minimum speed) then
         # it's necessary to try to avoid the collision 
         if c_cars_a[closest_ahead, features['x']] < 0.35 * th_x and c_cars_a[closest_ahead, features['vx']] < 0:
             # if both LANE_RIGHT and LANE_LEFT available then chose the lane which cars in it are further
             if actions['LANE_RIGHT'] in available_actions and actions['LANE_LEFT'] in available_actions:
-                r_cars.reshape(-1, 7)
-                l_cars.reshape(-1, 7)
+                r_cars.reshape(-1, 5)
+                l_cars.reshape(-1, 5)
                 if np.min(abs(l_cars[:, features['x']])) < np.min(abs(r_cars[:, features['x']])):
                     return actions['LANE_RIGHT']
                 else: return actions['LANE_LEFT']
@@ -143,6 +158,12 @@ def baseline_agent(env, obs, lanes_count):
 
 
 def cheat_baseline():
+    """
+    Cheating baseline for highway_env (either "highway-v0" or "highway-fast-v0"), always returns 4 that corresponds to the action 'SLOWER'
+    Even if is very simple it 'breakes' the game because it never really happens to find a car approaching from behind causing a collision
+    this means that the only possible cause for collision is when a car in the same lane goes slower than the minimum possible speed of the
+    ego car (the agent). This in the end results in a overall higher episode return average than the more greedy (and complex) 'baseline_policy' 
+    """
     return 4
 
 
@@ -155,23 +176,24 @@ torch.manual_seed(2119275)
 MAX_STEPS = int(2e4)  # This should be enough to obtain nice results, however feel free to change it
 env_name = "highway-v0" #"highway-fast-v0"  # We use the 'fast' env just for faster training, if you want you can use "highway-v0"
 
+LANES = 3
+EPISODES = 10
+
 env = gymnasium.make(env_name,
                      config={
                         'observation':{
                             'type': 'Kinematics',
-                            "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
-                            'vehicles_count': 5,
+                            "features": ["presence", "x", "y", "vx", "vy"],
                         },
                         
                         'action': {
                             'type': 'DiscreteMetaAction'
                         },
-                        'lanes_count': 3,
+                        'lanes_count': LANES,
                         'absolute': False,
                         'duration': 40, "vehicles_count": 50},
                         render_mode = 'human'
                         )
-
 
 obs, info = env.reset()
 done, truncated = False, False
@@ -179,19 +201,18 @@ episode = 1
 episode_steps = 0
 episode_return = 0
 
-
-while episode <= 10:
+while episode <= EPISODES:
     episode_steps += 1
 
     # baseline action selection
-    action = baseline_agent(env = env, obs = obs, lanes_count = 3)
+    action = baseline_agent(env = env, obs = obs, lanes_count = LANES)
 
     # step
     obs, reward, done, truncated, info = env.step(action)
 
     episode_return += reward
     env.render()
-    # time.sleep(1)
+
     if done or truncated:
         print(f"Episode Num: {episode} Episode T: {episode_steps} Return: {episode_return:.3f}, Crash: {done}")
 
