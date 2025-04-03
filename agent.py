@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import random
 
-class AgentModel(nn.Module):
+class Q_network(nn.Module):
 
     def __init__(self, input_size, output_size, hidden_size1 = 128, hidden_size2 =128):
         """
@@ -14,7 +14,7 @@ class AgentModel(nn.Module):
         
 
         """
-        super(AgentModel, self).__init__()
+        super(Q_network, self).__init__()
         
         self.fc1 = nn.Linear(input_size, hidden_size1)
         self.fc2 = nn.Linear(hidden_size1, hidden_size2)
@@ -23,7 +23,7 @@ class AgentModel(nn.Module):
     def forward(self, x):
         x = F.leaky_relu(self.fc1(x))
         x = F.leaky_relu(self.fc2(x))
-        out = F.softmax(self.fc3(x), dim=-1)
+        out = self.fc3(x)
         return out
 
 

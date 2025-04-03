@@ -105,7 +105,7 @@ env = gymnasium.make(env_name,
 print('>>> ENVIRONMENT INITIALIZED')
 
 # Initialize your model
-agent = ag.AgentModel(input_size=25, output_size=5)
+agent = ag.Q_network(input_size=25, output_size=5)
 Q_hat = copy.deepcopy(agent)
 
 optimizer = torch.optim.AdamW(agent.parameters(), lr = LR)
