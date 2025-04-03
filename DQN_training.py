@@ -34,10 +34,10 @@ Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state'
 
 class memory(object):
 
-    def __init__(self, capcity):
+    def __init__(self, capacity):
         """Initiates the replay buffer """
 
-        self.memory = deque([], maxlen = capcity) # deque datatype
+        self.memory = deque([], maxlen = capacity) # deque datatype
 
 
     def push(self, *args):
@@ -62,7 +62,7 @@ class memory(object):
 
 BATCH_SIZE = 32
 
-DISCOUNT_FACTOR = 0.99 
+DISCOUNT_FACTOR = 0.8
 
 STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
 
@@ -110,6 +110,8 @@ Q_hat = ag.Q_network(input_size=25, output_size=5)
 
 optimizer = torch.optim.AdamW(agent.parameters(), lr = LR)
 
+Q_hat.eval()
+
 # moving the models to the gpu if available
 agent.to(device=device)
 Q_hat.to(device=device)
@@ -141,7 +143,7 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
     # Select the action to be performed by the agent
     
     # eps decay
-    eps = EPS_END + (EPS_START - EPS_END) * math.exp(-1. * episode_steps / EPS_DECAY)
+    eps = EPS_END + (EPS_START - EPS_END) * math.exp(-1. * t / EPS_DECAY)
     # print(eps)
     # creating a torch state tensor to feed to the agent's neural network
     state_tensor = torch.from_numpy(state)
@@ -206,9 +208,8 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
             if done_batch[i]:
                 y[i] = reward_batch[i]
             else:
-                with torch.no_grad(): 
-                    Q_hat_next = Q_hat(next_state_batch[i])
-                max_Q_hat_next = torch.max(Q_hat_next) # should be a number and hence should not be on the gpu
+                Q_hat_next = Q_hat(next_state_batch[i])
+                max_Q_hat_next = Q_hat_next.max().item() # should be a number and hence should not be on the gpu
 
                 y[i] = reward_batch[i] + DISCOUNT_FACTOR * max_Q_hat_next
 
@@ -218,7 +219,7 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
 
         
         # computation of the loss and training step
-        loss = loss_function(Q_values, target = y)
+        loss = loss_function(Q_values, y)
         loss_values_history.append(loss.cpu().detach().numpy())
         # print(f'loss at iteration t = {loss}')
 
@@ -233,6 +234,7 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
         if training_steps % C == 0: # every C training steps copies Q hat and agent parameter
             Q_hat = copy.deepcopy(agent)
             Q_hat.to(device=device)
+            Q_hat.eval()
     ############################################################################
 
     if done or truncated:

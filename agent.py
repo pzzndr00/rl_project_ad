@@ -8,7 +8,7 @@ import random
 
 class Q_network(nn.Module):
 
-    def __init__(self, input_size, output_size, hidden_size1 = 256, hidden_size2 = 256):
+    def __init__(self, input_size, output_size, hidden_size1 = 64, hidden_size2 = 64):
         """
         Two hidden layers FFNN, soft max final layer
         
