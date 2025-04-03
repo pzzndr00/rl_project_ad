@@ -60,23 +60,23 @@ class memory(object):
 
 # Constants and parameters #####################################################
 
-BATCH_SIZE = 256
+BATCH_SIZE = 32
 
 DISCOUNT_FACTOR = 0.99 
 
 STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
 
 # epsilon
-EPS_START = 0.9
+EPS_START = 0.99
 EPS_END = 0.05
 EPS_DECAY = 1000
 
-LR = 1e-4
+LR = 5e-4
 
 MAX_STEPS = int(2e4)  # This should be enough to obtain nice results, however feel free to change it
 LANES = 3
 
-C = 10
+C = 50
 
 loss_function = nn.MSELoss()
 ################################################################################
@@ -99,14 +99,14 @@ env = gymnasium.make(env_name,
                         'lanes_count': LANES,
                         'absolute': False,
                         'duration': 40, "vehicles_count": 50},
-                        # render_mode = 'human'
+                        render_mode = 'human'
                         )
 
 print('>>> ENVIRONMENT INITIALIZED')
 
 # Initialize your model
 agent = ag.Q_network(input_size=25, output_size=5)
-Q_hat = copy.deepcopy(agent)
+Q_hat = ag.Q_network(input_size=25, output_size=5)
 
 optimizer = torch.optim.AdamW(agent.parameters(), lr = LR)
 

@@ -8,7 +8,7 @@ import random
 
 class Q_network(nn.Module):
 
-    def __init__(self, input_size, output_size, hidden_size1 = 128, hidden_size2 =128):
+    def __init__(self, input_size, output_size, hidden_size1 = 256, hidden_size2 = 256):
         """
         Two hidden layers FFNN, soft max final layer
         
@@ -21,8 +21,8 @@ class Q_network(nn.Module):
         self.fc3 = nn.Linear(hidden_size2, output_size)
     
     def forward(self, x):
-        x = F.leaky_relu(self.fc1(x))
-        x = F.leaky_relu(self.fc2(x))
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
         out = self.fc3(x)
         return out
 
