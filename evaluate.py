@@ -40,7 +40,7 @@ while episode <= 10:
     with torch.no_grad():
         Q_state_a = DQN_agent(state_tensor)
     action = torch.argmax(Q_state_a)
-    print(f'Q_state_a = {Q_state_a.cpu().detach().numpy()}')
+    # print(f'Q_state_a = {Q_state_a.cpu().detach().numpy()}')
     # print(f'action: {action}')
 
     # Hint: take a look at the docs to see the difference between 'done' and 'truncated'
