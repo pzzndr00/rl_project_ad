@@ -78,6 +78,8 @@ MAX_STEPS = int(2e4)  # This should be enough to obtain nice results, however fe
 LANES = 3
 
 C = 1
+
+loss_function = nn.MSELoss()
 ################################################################################
 
 
@@ -98,7 +100,7 @@ env = gymnasium.make(env_name,
                         'lanes_count': LANES,
                         'absolute': False,
                         'duration': 40, "vehicles_count": 50},
-                        #render_mode = 'human'
+                        # render_mode = 'human'
                         )
 
 print('>>> ENVIRONMENT INITIALIZED')
@@ -107,7 +109,7 @@ print('>>> ENVIRONMENT INITIALIZED')
 agent = ag.AgentModel(input_size=25, output_size=5)
 Q_hat = copy.deepcopy(agent)
 
-optimizer = torch.optim.Adam(agent.parameters(), lr = LR)
+optimizer = torch.optim.AdamW(agent.parameters(), lr = LR)
 
 # moving the models to the gpu if available
 agent.to(device=device)
@@ -141,19 +143,19 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
     
     # eps decay
     eps = EPS_END + (EPS_START - EPS_END) * math.exp(-1. * episode_steps / EPS_DECAY)
-
+    # print(eps)
     # creating a torch state tensor to feed to the agent's neural network
     state_tensor = torch.from_numpy(state)
     state_tensor = state_tensor.to(device=device)
     # print(f'>>> {state_tensor.device}')
-    Q_state_a = agent(state_tensor)
+    with torch.no_grad(): # no need to compute the gradient at this point
+        Q_state_a = agent(state_tensor)
     
     # choosing an action following an epsilon greedy policy
-    with torch.no_grad(): # no need to compute the gradient at this point
-        available_actions = env.unwrapped.get_available_actions()
+     
+    available_actions = env.unwrapped.get_available_actions()
     action = ag.eps_greedy_policy(actions_values = Q_state_a.cpu().detach().numpy(), available_actions = available_actions, eps = eps)
     # print(f'action at step {t} is: {action}')
-
 
     # Hint: take a look at the docs to see the difference between 'done' and 'truncated'
     # done: the agent entered in a terminal state (in this case crash)
@@ -174,7 +176,7 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
 
     # TRAINING #################################################################
     if t >= BATCH_SIZE:
-        if training_steps == 0: print('>>> TRAINING STARTED')
+        # if training_steps == 0: print('>>> TRAINING STARTED')
 
         batch = replay_buffer.sample(batch_size = BATCH_SIZE)
 
@@ -184,11 +186,11 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
         y = y.to(device=device)
 
         state_batch = torch.cat(batch_zip.state).reshape((-1, STATE_DIMENSIONALITY))       
-        action_batch = batch_zip.action
-        reward_batch = batch_zip.reward
+        action_batch = np.array(batch_zip.action)
+        reward_batch = np.array(batch_zip.reward)
         next_state_batch = torch.cat(batch_zip.next_state).reshape((-1, STATE_DIMENSIONALITY))
-        done_batch = batch_zip.done
-
+        done_batch = list(batch_zip.done)
+        
         # moving tensors to device
         state_batch = state_batch.to(device=device)
         #action_batch.to(device=device)
@@ -196,23 +198,27 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
         next_state_batch = next_state_batch.to(device=device)
         #done_batch.to(device=device)
 
+        Q_values = torch.zeros(BATCH_SIZE)
+        Q_values = Q_values.to(device = device)
+
+        # there are for sure better ways than a for for doing this but for now... 
         for i in range(BATCH_SIZE):
-            
-            Q_values = torch.zeros(BATCH_SIZE)
-            Q_values = Q_values.to(device= device)
-            # expected Q function
-            # there are more efficient ways to do this
+
             if done_batch[i]:
                 y[i] = reward_batch[i]
-            else: 
-                Q_hat_next = Q_hat(next_state_batch[i])
+            else:
+                with torch.no_grad(): 
+                    Q_hat_next = Q_hat(next_state_batch[i])
                 max_Q_hat_next = torch.max(Q_hat_next) # should be a number and hence should not be on the gpu
 
-                Q_values[i] = agent(state_batch[i])[action_batch[i]]
                 y[i] = reward_batch[i] + DISCOUNT_FACTOR * max_Q_hat_next
 
+            # for each sample compute the current agent action values
+            Q_values[i] = agent(state_batch[i])[action_batch[i]]
+            
+
+        
         # computation of the loss and training step
-        loss_function = nn.MSELoss()
         loss = loss_function(Q_values, target = y)
         loss_values_history.append(loss.cpu().detach().numpy())
         # print(f'loss at iteration t = {loss}')
