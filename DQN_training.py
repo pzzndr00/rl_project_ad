@@ -73,7 +73,7 @@ EPS_DECAY = 1000
 
 LR = 1e-4
 
-MAX_STEPS = int(2e5)  # This should be enough to obtain nice results, however feel free to change it
+MAX_STEPS = int(2e4)  # This should be enough to obtain nice results, however feel free to change it
 LANES = 3
 
 C = 10

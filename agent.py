@@ -23,7 +23,7 @@ class AgentModel(nn.Module):
     def forward(self, x):
         x = F.leaky_relu(self.fc1(x))
         x = F.leaky_relu(self.fc2(x))
-        out = F.softmax(self.fc3(x), dim=-1)  # Softmax over the last dimension
+        out = F.softmax(self.fc3(x), dim=-1)
         return out
 
 
