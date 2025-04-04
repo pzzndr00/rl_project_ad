@@ -3,6 +3,7 @@ import highway_env
 import numpy as np
 import torch
 import random
+import DQN
 
 device = 'cpu'
 

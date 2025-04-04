@@ -15,41 +15,7 @@ import matplotlib.pyplot as plt
 
 import memoryBuffer as mb
 
-
-
-# DQN agent definition #########################################################
-class DQN_network(nn.Module):
-
-    def __init__(self, input_size, output_size, hidden_size1 = 128, hidden_size2 = 128):
-        """
-        Two hidden layers FFNN, soft max final layer
-        
-
-        """
-        super(DQN_network, self).__init__()
-        
-        self.fc1 = nn.Linear(input_size, hidden_size1)
-        self.fc2 = nn.Linear(hidden_size1, hidden_size2)
-        self.fc3 = nn.Linear(hidden_size2, output_size)
-    
-    def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        out = self.fc3(x)
-        return out
-
-
-    
-def eps_greedy_policy(actions_values, available_actions, eps):
-
-    u = random.random()
-
-    if u < 1 - eps:
-        return np.argmax(actions_values)
-    else:
-        return random.choice(available_actions)
-
-################################################################################
+import DQN
 
 # Set the seed and create the environment
 np.random.seed(2119275)
@@ -112,8 +78,8 @@ env = gymnasium.make(env_name,
 print('>>> ENVIRONMENT INITIALIZED')
 
 # Initialize your model
-agent = DQN_network(input_size=25, output_size=5)
-Q_hat = DQN_network(input_size=25, output_size=5)
+agent = DQN.DQN_network(input_size=25, output_size=5)
+Q_hat = DQN.DQN_network(input_size=25, output_size=5)
 
 optimizer = torch.optim.AdamW(agent.parameters(), lr = LR)
 
@@ -164,7 +130,7 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
     # choosing an action following an epsilon greedy policy
      
     available_actions = env.unwrapped.get_available_actions()
-    action = eps_greedy_policy(actions_values = Q_state_a.cpu().detach().numpy(), available_actions = available_actions, eps = eps)
+    action = DQN.eps_greedy_policy(actions_values = Q_state_a.cpu().detach().numpy(), available_actions = available_actions, eps = eps)
     # print(f'action at step {t} is: {action}')
 
     # Hint: take a look at the docs to see the difference between 'done' and 'truncated'
