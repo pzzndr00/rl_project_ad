@@ -59,4 +59,4 @@ while episode <= 10:
         episode_steps = 0
         episode_return = 0
 
-env.close()
+# env.close()

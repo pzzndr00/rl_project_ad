@@ -60,7 +60,7 @@ class memory(object):
 
 # Constants and parameters #####################################################
 
-BATCH_SIZE = 32
+BATCH_SIZE = 128
 
 DISCOUNT_FACTOR = 0.8
 
@@ -73,7 +73,7 @@ EPS_DECAY = 1000
 
 LR = 5e-4
 
-MAX_STEPS = int(2e4)  # This should be enough to obtain nice results, however feel free to change it
+MAX_STEPS = int(4e4)  # This should be enough to obtain nice results, however feel free to change it
 LANES = 3
 
 C = 50
