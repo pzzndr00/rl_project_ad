@@ -3,7 +3,6 @@ import highway_env
 import numpy as np
 import torch
 import random
-import agent as ag
 
 device = 'cpu'
 
@@ -20,7 +19,7 @@ env = gymnasium.make(env_name,
 
 # Initialize your model and load parameters
 # agent = ag.AgentModel(input_size=25, output_size=5)
-DQN_agent = torch.load('trained_DQN_agent.pt', weights_only = False)
+DQN_agent = torch.load('trained_DQN_network.pt', weights_only = False)
 DQN_agent.to(device=device)
 
 # Evaluation loop

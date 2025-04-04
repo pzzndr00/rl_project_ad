@@ -1,24 +1,87 @@
 import gymnasium
 import highway_env
+
 import numpy as np
+
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+
 import random
 import math
 import copy
-from collections import namedtuple, deque
 import tqdm
-
-import agent as ag
-
 import matplotlib.pyplot as plt
+
+import memoryBuffer as mb
+
+
+
+# DQN agent definition #########################################################
+class DQN_network(nn.Module):
+
+    def __init__(self, input_size, output_size, hidden_size1 = 128, hidden_size2 = 128):
+        """
+        Two hidden layers FFNN, soft max final layer
+        
+
+        """
+        super(DQN_network, self).__init__()
+        
+        self.fc1 = nn.Linear(input_size, hidden_size1)
+        self.fc2 = nn.Linear(hidden_size1, hidden_size2)
+        self.fc3 = nn.Linear(hidden_size2, output_size)
+    
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        out = self.fc3(x)
+        return out
+
+
+    
+def eps_greedy_policy(actions_values, available_actions, eps):
+
+    u = random.random()
+
+    if u < 1 - eps:
+        return np.argmax(actions_values)
+    else:
+        return random.choice(available_actions)
+
+################################################################################
 
 # Set the seed and create the environment
 np.random.seed(2119275)
 random.seed(2119275)
 torch.manual_seed(2119275)
 
-# GPU?
+
+# Constants and parameters #####################################################
+
+STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
+
+BATCH_SIZE = 128
+
+# epsilon decay parameters
+EPS_START = 0.99
+EPS_END = 0.05
+EPS_DECAY = 1000
+
+DISCOUNT_FACTOR = 0.8
+LR = 5e-4 # learning rate
+C = 50 # number of step from a copy of the weights of DQN onto Q_hat to the next
+loss_function = nn.MSELoss() # nn.SmoothL1Loss() # to be tried
+
+MAX_STEPS = int(4e4)  # This should be enough to obtain nice results, however feel free to change it
+
+LANES = 3
+
+################################################################################
+
+# main #########################################################################
+
+# GPU? 
 device = torch.device(
     "cuda" if torch.cuda.is_available() else
     "mps" if torch.backends.mps.is_available() else
@@ -27,63 +90,7 @@ device = torch.device(
 
 print(f'>>> DEVICE =  {device}')
 
-
-# Replay buffer ################################################################
-
-Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state', 'done'))
-
-class memory(object):
-
-    def __init__(self, capacity):
-        """Initiates the replay buffer """
-
-        self.memory = deque([], maxlen = capacity) # deque datatype
-
-
-    def push(self, *args):
-        """Saves a transition"""
-
-        self.memory.append(Transition(*args))
-
-
-    def sample(self, batch_size):
-        """Samples a batch of size batch_size from the replay buffer"""
-
-        return random.sample(self.memory, batch_size)
-
-
-    def __len__(self):
-        return len(self.memory)
-
-
-# End Replay buffer ############################################################
-
-# Constants and parameters #####################################################
-
-BATCH_SIZE = 128
-
-DISCOUNT_FACTOR = 0.8
-
-STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
-
-# epsilon
-EPS_START = 0.99
-EPS_END = 0.05
-EPS_DECAY = 1000
-
-LR = 5e-4
-
-MAX_STEPS = int(4e4)  # This should be enough to obtain nice results, however feel free to change it
-LANES = 3
-
-C = 50
-
-loss_function = nn.MSELoss()
-################################################################################
-
-
-# main #########################################################################
-
+# Environment creation 
 env_name = "highway-fast-v0"  # We use the 'fast' env just for faster training, if you want you can use "highway-v0"
 
 env = gymnasium.make(env_name,
@@ -105,8 +112,8 @@ env = gymnasium.make(env_name,
 print('>>> ENVIRONMENT INITIALIZED')
 
 # Initialize your model
-agent = ag.Q_network(input_size=25, output_size=5)
-Q_hat = ag.Q_network(input_size=25, output_size=5)
+agent = DQN_network(input_size=25, output_size=5)
+Q_hat = DQN_network(input_size=25, output_size=5)
 
 optimizer = torch.optim.AdamW(agent.parameters(), lr = LR)
 
@@ -117,7 +124,7 @@ agent.to(device=device)
 Q_hat.to(device=device)
 
 # initialization of the replay buffer
-replay_buffer = memory(MAX_STEPS)
+replay_buffer = mb.memory(MAX_STEPS)
 print('>>> REPLAY BUFFER INITIALIZED')
 
 state, _ = env.reset()
@@ -155,7 +162,7 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
     # choosing an action following an epsilon greedy policy
      
     available_actions = env.unwrapped.get_available_actions()
-    action = ag.eps_greedy_policy(actions_values = Q_state_a.cpu().detach().numpy(), available_actions = available_actions, eps = eps)
+    action = eps_greedy_policy(actions_values = Q_state_a.cpu().detach().numpy(), available_actions = available_actions, eps = eps)
     # print(f'action at step {t} is: {action}')
 
     # Hint: take a look at the docs to see the difference between 'done' and 'truncated'
@@ -163,7 +170,7 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
     # truncated: the episode stops for external reasons (reached max duration of the episode)
     next_state, reward, done, truncated, _ = env.step(action)
     episode_avg_reward += reward
-    next_state = np.squeeze(next_state.reshape(-1))
+    next_state = next_state.reshape(-1)
     next_state_tensor = torch.from_numpy(next_state)
     next_state_tensor = next_state_tensor.to(device=device)
 
@@ -181,7 +188,7 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
 
         batch = replay_buffer.sample(batch_size = BATCH_SIZE)
 
-        batch_zip = Transition(*zip(*batch))
+        batch_zip = mb.Transition(*zip(*batch))
 
         y = torch.zeros(BATCH_SIZE)
         y = y.to(device=device)
@@ -255,7 +262,7 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
 
 print('>>> TRAINING ENDED')
 # saving the trained model for evaluation
-torch.save(agent, 'trained_DQN_agent.pt') 
+torch.save(agent, 'trained_DQN_network.pt') 
 print('>>> TRAINED DQN MODEL SAVED')
 
 # training data plot
@@ -276,6 +283,6 @@ rewards_plot.plot(episode_avg_reward_history)
 plt.show()
 
 
-env.close()
+# env.close()
 
 print('>>> PROGRAM TERMINATED')
