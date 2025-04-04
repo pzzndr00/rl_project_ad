@@ -19,7 +19,7 @@ env = gymnasium.make(env_name,
 
 # Initialize your model and load parameters
 # agent = ag.AgentModel(input_size=25, output_size=5)
-DQN_agent = torch.load('trained_DQN_network.pt', weights_only = False)
+DQN_agent = torch.load('trained_DQN_network.pt', weights_only = False) # weights_only true?
 DQN_agent.to(device=device)
 
 # Evaluation loop

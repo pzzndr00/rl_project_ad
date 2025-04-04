@@ -61,7 +61,7 @@ torch.manual_seed(2119275)
 
 STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
 
-BATCH_SIZE = 128
+BATCH_SIZE = 64
 
 # epsilon decay parameters
 EPS_START = 0.99
@@ -73,7 +73,7 @@ LR = 5e-4 # learning rate
 C = 50 # number of step from a copy of the weights of DQN onto Q_hat to the next
 loss_function = nn.MSELoss() # nn.SmoothL1Loss() # to be tried
 
-MAX_STEPS = int(4e4)  # This should be enough to obtain nice results, however feel free to change it
+MAX_STEPS = int(2e4)  # This should be enough to obtain nice results, however feel free to change it
 
 LANES = 3
 
@@ -138,13 +138,15 @@ episode_return = 0
 training_steps = 0
 
 # training data arrays initialization
-loss_values_history = []
+rewards_history = []
+
+episode_length_history = []
 episode_return_history = []
 
-episode_avg_reward = 0
-episode_avg_reward_history = []
+loss_vals_history = []
 
-# Training loop
+
+# Training loop ################################################################
 for t in tqdm.tqdm(range(MAX_STEPS)):
     episode_steps += 1
     # Select the action to be performed by the agent
@@ -169,7 +171,6 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
     # done: the agent entered in a terminal state (in this case crash)
     # truncated: the episode stops for external reasons (reached max duration of the episode)
     next_state, reward, done, truncated, _ = env.step(action)
-    episode_avg_reward += reward
     next_state = next_state.reshape(-1)
     next_state_tensor = torch.from_numpy(next_state)
     next_state_tensor = next_state_tensor.to(device=device)
@@ -184,7 +185,6 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
 
     # TRAINING #################################################################
     if t >= BATCH_SIZE:
-        # if training_steps == 0: print('>>> TRAINING STARTED')
 
         batch = replay_buffer.sample(batch_size = BATCH_SIZE)
 
@@ -216,7 +216,7 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
                 y[i] = reward_batch[i]
             else:
                 Q_hat_next = Q_hat(next_state_batch[i])
-                max_Q_hat_next = Q_hat_next.max().item() # should be a number and hence should not be on the gpu
+                max_Q_hat_next = Q_hat_next.max().item()
 
                 y[i] = reward_batch[i] + DISCOUNT_FACTOR * max_Q_hat_next
 
@@ -227,7 +227,7 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
         
         # computation of the loss and training step
         loss = loss_function(Q_values, y)
-        loss_values_history.append(loss.cpu().detach().numpy())
+
         # print(f'loss at iteration t = {loss}')
 
         optimizer.zero_grad()
@@ -238,19 +238,22 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
 
         training_steps += 1
 
-        if training_steps % C == 0: # every C training steps copies Q hat and agent parameter
+        # storing data for plots
+        rewards_history.append(reward)
+        loss_vals_history.append(loss.cpu().detach().numpy())
+
+        if training_steps % C == 0: # every C steps: agent parameters -> Q_hat parameters
             Q_hat = copy.deepcopy(agent)
-            Q_hat.to(device=device)
-            Q_hat.eval()
+            Q_hat.eval() # set Q_hat to evaluation mode, gradient computation not needed
+
     ############################################################################
 
     if done or truncated:
         #print(f"Total T: {t} Episode Num: {episode} Episode T: {episode_steps} Return: {episode_return:.3f}")
 
         # Save training information and model parameters
+        episode_length_history.append(episode_steps)
         episode_return_history.append(episode_return)
-        episode_avg_reward_history.append(episode_avg_reward/episode_steps)
-        episode_avg_reward = 0
 
         state, _ = env.reset()
         state = state.reshape(-1)
@@ -261,28 +264,61 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
 
 
 print('>>> TRAINING ENDED')
+
 # saving the trained model for evaluation
 torch.save(agent, 'trained_DQN_network.pt') 
 print('>>> TRAINED DQN MODEL SAVED')
 
-# training data plot
-fig, (loss_plot, returns_plot, rewards_plot) = plt.subplots(1, 3)
 
-fig.suptitle('Training data plot')
+################################################################################
+
+# TRAINING DATA PLOTS AND SAVING ###############################################
+
+# saving data
+np.savetxt('training_data/DQN/DQN_training_data_loss_and_rewards.csv', np.transpose([loss_vals_history, rewards_history]), header= 'Loss,rewards',delimiter = ',')
+np.savetxt('training_data/DQN/DQN_training_data_returns_episode_length.csv', np.transpose([episode_return_history, episode_length_history]), header='returns,episode_length', delimiter=',')
 
 
+# Create a 2x2 grid of subplots
+fig, ((loss_plot, returns_plot), (rewards_plot, episode_length_plot)) = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))
+
+# Set a main title for the entire figure
+fig.suptitle('Training Data Plot', fontsize=16)
+
+# Plot LOSS
 loss_plot.set_title("LOSS")
-loss_plot.plot(loss_values_history)
+loss_plot.plot(loss_vals_history, color='red')
+loss_plot.set_xlabel("Episodes")
+loss_plot.set_ylabel("Loss")
 
+# Plot RETURNS
 returns_plot.set_title("RETURNS")
-returns_plot.plot(episode_return_history)
+returns_plot.plot(episode_return_history, color='blue')
+returns_plot.set_xlabel("Episodes")
+returns_plot.set_ylabel("Return")
 
-rewards_plot.set_title("AVG REWARDS")
-rewards_plot.plot(episode_avg_reward_history)
+# Plot REWARDS
+rewards_plot.set_title("REWARDS")
+rewards_plot.plot(episode_return_history, color='green')  # Consider plotting reward per step if available
+rewards_plot.set_xlabel("Episodes")
+rewards_plot.set_ylabel("Rewards")
 
+# Plot EPISODE LENGTH
+episode_length_plot.set_title('EPISODE LENGTH')
+episode_length_plot.plot(episode_length_history, color='purple')
+episode_length_plot.set_xlabel("Episodes")
+episode_length_plot.set_ylabel("Length")
+
+# Adjust layout to prevent overlap
+plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+
+
+# showing data
 plt.show()
-
+################################################################################
 
 # env.close()
+
 
 print('>>> PROGRAM TERMINATED')
