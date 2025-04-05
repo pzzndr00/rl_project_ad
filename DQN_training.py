@@ -27,14 +27,16 @@ torch.manual_seed(2119275)
 
 STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
 
-BATCH_SIZE = 64
+BATCH_SIZE = 128
+LEARNING_START = 200 
+
 
 # epsilon decay parameters
-EPS_START = 0.99
+EPS_START = 0.95
 EPS_END = 0.05
 EPS_DECAY = 1000
 
-DISCOUNT_FACTOR = 0.8
+DISCOUNT_FACTOR = 0.7
 LR = 5e-4 # learning rate
 C = 50 # number of step from a copy of the weights of DQN onto Q_hat to the next
 loss_function = nn.MSELoss() # nn.SmoothL1Loss() # to be tried
@@ -150,7 +152,7 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
     episode_return += reward
 
     # TRAINING #################################################################
-    if t >= BATCH_SIZE:
+    if t >= LEARNING_START:
 
         batch = replay_buffer.sample(batch_size = BATCH_SIZE)
 
@@ -188,8 +190,6 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
 
             # for each sample compute the current agent action values
             Q_values[i] = agent(state_batch[i])[action_batch[i]]
-            
-
         
         # computation of the loss and training step
         loss = loss_function(Q_values, y)
