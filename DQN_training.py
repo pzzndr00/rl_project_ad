@@ -36,10 +36,10 @@ EPS_START = 0.95
 EPS_END = 0.05
 EPS_DECAY = 1000
 
-DISCOUNT_FACTOR = 0.7
+DISCOUNT_FACTOR = 0.8
 LR = 5e-4 # learning rate
 C = 50 # number of step from a copy of the weights of DQN onto Q_hat to the next
-loss_function = nn.MSELoss() # nn.SmoothL1Loss() # to be tried
+loss_function =  nn.SmoothL1Loss() # nn.MSELoss() # nn.SmoothL1Loss() 
 
 MAX_STEPS = int(2e4)  # This should be enough to obtain nice results, however feel free to change it
 
@@ -55,7 +55,7 @@ device = torch.device(
     "mps" if torch.backends.mps.is_available() else
     "cpu"
 )
-
+device = 'cpu'
 print(f'>>> DEVICE =  {device}')
 
 # Environment creation 
@@ -113,7 +113,7 @@ episode_return_history = []
 
 loss_vals_history = []
 
-
+print('Training progress: ')
 # Training loop ################################################################
 for t in tqdm.tqdm(range(MAX_STEPS)):
     episode_steps += 1
@@ -121,19 +121,18 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
     
     # eps decay
     eps = EPS_END + (EPS_START - EPS_END) * math.exp(-1. * t / EPS_DECAY)
-    # print(eps)
-    # creating a torch state tensor to feed to the agent's neural network
+
+    # creating a torch state tensor
     state_tensor = torch.from_numpy(state)
     state_tensor = state_tensor.to(device=device)
-    # print(f'>>> {state_tensor.device}')
+
+    # compute the Q function for the given state (that is a vector containing an entry for each action)
     with torch.no_grad(): # no need to compute the gradient at this point
         Q_state_a = agent(state_tensor)
     
-    # choosing an action following an epsilon greedy policy
-     
+    # choosing an action following an epsilon greedy policy using the afore computed Q
     available_actions = env.unwrapped.get_available_actions()
     action = DQN.eps_greedy_policy(actions_values = Q_state_a.cpu().detach().numpy(), available_actions = available_actions, eps = eps)
-    # print(f'action at step {t} is: {action}')
 
     # Hint: take a look at the docs to see the difference between 'done' and 'truncated'
     # done: the agent entered in a terminal state (in this case crash)
@@ -145,21 +144,19 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
 
     # Store transition in memory and train your model
     
-    # Storing trnsition in memory
+    # Storing trnsition in the replay buffer
     replay_buffer.push(state_tensor, action, reward, next_state_tensor, done)
 
     state = next_state
     episode_return += reward
 
     # TRAINING #################################################################
-    if t >= LEARNING_START:
+    if t >= LEARNING_START: # checks that enough experience has been collected
 
+        # batch sampling and conversion to tensors #############################
         batch = replay_buffer.sample(batch_size = BATCH_SIZE)
 
         batch_zip = mb.Transition(*zip(*batch))
-
-        y = torch.zeros(BATCH_SIZE)
-        y = y.to(device=device)
 
         state_batch = torch.cat(batch_zip.state).reshape((-1, STATE_DIMENSIONALITY))       
         action_batch = np.array(batch_zip.action)
@@ -169,15 +166,16 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
         
         # moving tensors to device
         state_batch = state_batch.to(device=device)
-        #action_batch.to(device=device)
-        #reward_batch.to(device=device)
         next_state_batch = next_state_batch.to(device=device)
-        #done_batch.to(device=device)
 
         Q_values = torch.zeros(BATCH_SIZE)
         Q_values = Q_values.to(device = device)
 
-        # there are for sure better ways than a for for doing this but for now... 
+        ########################################################################
+
+        y = torch.zeros(BATCH_SIZE)
+        y = y.to(device=device)
+ 
         for i in range(BATCH_SIZE):
 
             if done_batch[i]:
