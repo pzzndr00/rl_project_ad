@@ -27,8 +27,8 @@ torch.manual_seed(2119275)
 
 STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
 
-BATCH_SIZE = 128
-LEARNING_START = 200 
+BATCH_SIZE = 64
+LEARNING_START = 200
 
 
 # epsilon decay parameters
@@ -36,7 +36,7 @@ EPS_START = 0.95
 EPS_END = 0.05
 EPS_DECAY = 1000
 
-DISCOUNT_FACTOR = 0.8
+DISCOUNT_FACTOR = 0.9
 LR = 5e-4 # learning rate
 C = 50 # number of step from a copy of the weights of DQN onto Q_hat to the next
 loss_function =  nn.SmoothL1Loss() # nn.MSELoss() # nn.SmoothL1Loss() 
@@ -55,7 +55,7 @@ device = torch.device(
     "mps" if torch.backends.mps.is_available() else
     "cpu"
 )
-device = 'cpu'
+
 print(f'>>> DEVICE =  {device}')
 
 # Environment creation 
@@ -74,16 +74,14 @@ env = gymnasium.make(env_name,
                         'lanes_count': LANES,
                         'absolute': False,
                         'duration': 40, "vehicles_count": 50},
-                        render_mode = 'human'
+                        # render_mode = 'human'
                         )
 
 print('>>> ENVIRONMENT INITIALIZED')
 
 # Initialize your model
-agent = DQN.DQN_network(input_size=25, output_size=5)
-Q_hat = DQN.DQN_network(input_size=25, output_size=5)
-
-optimizer = torch.optim.AdamW(agent.parameters(), lr = LR)
+agent = DQN.DQN_agent(input_size=25, output_size=5, discount_factor = DISCOUNT_FACTOR ,loss_function = loss_function, lr = LR, device = device)
+Q_hat = DQN.DQN_agent(input_size=25, output_size=5)
 
 Q_hat.eval()
 
@@ -113,6 +111,8 @@ episode_return_history = []
 
 loss_vals_history = []
 
+eps_values = []
+
 print('Training progress: ')
 # Training loop ################################################################
 for t in tqdm.tqdm(range(MAX_STEPS)):
@@ -121,7 +121,7 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
     
     # eps decay
     eps = EPS_END + (EPS_START - EPS_END) * math.exp(-1. * t / EPS_DECAY)
-
+    eps_values.append(eps)
     # creating a torch state tensor
     state_tensor = torch.from_numpy(state)
     state_tensor = state_tensor.to(device=device)
@@ -131,8 +131,7 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
         Q_state_a = agent(state_tensor)
     
     # choosing an action following an epsilon greedy policy using the afore computed Q
-    available_actions = env.unwrapped.get_available_actions()
-    action = DQN.eps_greedy_policy(actions_values = Q_state_a.cpu().detach().numpy(), available_actions = available_actions, eps = eps)
+    action = agent.act_eps_greedy(state_tensor=state_tensor, eps = eps)
 
     # Hint: take a look at the docs to see the difference between 'done' and 'truncated'
     # done: the agent entered in a terminal state (in this case crash)
@@ -153,56 +152,11 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
     # TRAINING #################################################################
     if t >= LEARNING_START: # checks that enough experience has been collected
 
-        # batch sampling and conversion to tensors #############################
-        batch = replay_buffer.sample(batch_size = BATCH_SIZE)
-
-        batch_zip = mb.Transition(*zip(*batch))
-
-        state_batch = torch.cat(batch_zip.state).reshape((-1, STATE_DIMENSIONALITY))       
-        action_batch = np.array(batch_zip.action)
-        reward_batch = np.array(batch_zip.reward)
-        next_state_batch = torch.cat(batch_zip.next_state).reshape((-1, STATE_DIMENSIONALITY))
-        done_batch = list(batch_zip.done)
-        
-        # moving tensors to device
-        state_batch = state_batch.to(device=device)
-        next_state_batch = next_state_batch.to(device=device)
-
-        Q_values = torch.zeros(BATCH_SIZE)
-        Q_values = Q_values.to(device = device)
-
-        ########################################################################
-
-        y = torch.zeros(BATCH_SIZE)
-        y = y.to(device=device)
- 
-        for i in range(BATCH_SIZE):
-
-            if done_batch[i]:
-                y[i] = reward_batch[i]
-            else:
-                Q_hat_next = Q_hat(next_state_batch[i])
-                max_Q_hat_next = Q_hat_next.max().item()
-
-                y[i] = reward_batch[i] + DISCOUNT_FACTOR * max_Q_hat_next
-
-            # for each sample compute the current agent action values
-            Q_values[i] = agent(state_batch[i])[action_batch[i]]
-        
-        # computation of the loss and training step
-        loss = loss_function(Q_values, y)
-
-        # print(f'loss at iteration t = {loss}')
-
-        optimizer.zero_grad()
-        loss.backward()
-
-        # torch.nn.utils.clip_grad_value_(agent.parameters(), 100)
-        optimizer.step()
+        loss = agent.training_step(Q_hat = Q_hat, replay_buffer = replay_buffer, batch_size = BATCH_SIZE)
 
         training_steps += 1
 
-        # storing data for plots
+        # storing data for plots but only starting when actual learning starts
         rewards_history.append(reward)
         loss_vals_history.append(loss.cpu().detach().numpy())
 
@@ -276,13 +230,14 @@ episode_length_plot.set_ylabel("Length")
 # Adjust layout to prevent overlap
 plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
-
+eps_fig = plt.figure('Epsilon values')
+plt.plot(eps_values)
 
 # showing data
 plt.show()
+plt.close('all')
 ################################################################################
 
-# env.close()
-
+env.close()
 
 print('>>> PROGRAM TERMINATED')

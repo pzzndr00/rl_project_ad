@@ -23,6 +23,8 @@ env = gymnasium.make(env_name,
 DQN_agent = torch.load('trained_DQN_network.pt', weights_only = False) # weights_only true?
 DQN_agent.to(device=device)
 
+DQN_agent.eval()
+
 # Evaluation loop
 state, _ = env.reset()
 state = state.reshape(-1)
@@ -37,11 +39,8 @@ while episode <= 10:
     state_tensor = torch.from_numpy(state)
     state_tensor = state_tensor.to(device=device)
     # Select the action to be performed by the agent
-    with torch.no_grad():
-        Q_state_a = DQN_agent(state_tensor)
-    action = torch.argmax(Q_state_a)
-    # print(f'Q_state_a = {Q_state_a.cpu().detach().numpy()}')
-    # print(f'action: {action}')
+    
+    action = DQN_agent.act_greedy(state_tensor)
 
     # Hint: take a look at the docs to see the difference between 'done' and 'truncated'
     state, reward, done, truncated, _ = env.step(action)
@@ -59,4 +58,4 @@ while episode <= 10:
         episode_steps = 0
         episode_return = 0
 
-# env.close()
+env.close()
