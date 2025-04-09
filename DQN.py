@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+# import torch.nn.functional as F
 import random
 import numpy as np
 
@@ -17,6 +17,8 @@ class DQN_agent(nn.Module):
         self.fc2 = nn.Linear(hidden_size1, hidden_size2)
         self.fc3 = nn.Linear(hidden_size2, output_size)
 
+        self.act = nn.ReLU()
+
         # parameters
         # self.model = DQN_network(input_size, output_size, hidden_size1 = hidden_size1, hidden_size2 = hidden_size2)
         self.optimizer = torch.optim.AdamW(self.parameters(), lr = lr)
@@ -27,8 +29,8 @@ class DQN_agent(nn.Module):
         self.output_size = output_size
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
+        x = self.act(self.fc1(x))
+        x = self.act(self.fc2(x))
         out = self.fc3(x)
         return out
 

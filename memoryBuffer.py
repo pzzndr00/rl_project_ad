@@ -16,6 +16,9 @@ class memory(object):
 
         self.memory.append(Transition(*args))
 
+    def popleft(self):
+        self.memory.popleft()
+        return
 
     def sample(self, batch_size):
         """Samples a batch of size batch_size from the replay buffer"""

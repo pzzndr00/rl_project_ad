@@ -24,11 +24,15 @@ torch.manual_seed(2119275)
 
 
 # Constants and parameters #####################################################
+MAX_STEPS = int(2e4)  # This should be enough to obtain nice results, however feel free to change it
+
+LANES = 3
 
 STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
 
+# BUFFER_MAX_SIZE = 15000
 BATCH_SIZE = 128
-LEARNING_START = 200
+LEARNING_START = 256
 
 
 # epsilon decay parameters
@@ -36,26 +40,26 @@ EPS_START = 0.95
 EPS_END = 0.05
 EPS_DECAY = 1000
 
-DISCOUNT_FACTOR = 0.75 # better results when 0.7 - 0.8 rather than > 0.8
+DISCOUNT_FACTOR = 0.8 # better results when 0.7 - 0.8 rather than > 0.8
 LR = 5e-4 # learning rate
 C = 50 # number of step from a copy of the weights of DQN onto Q_hat to the next
-loss_function =  nn.SmoothL1Loss() # nn.MSELoss() # nn.SmoothL1Loss() 
 
-MAX_STEPS = int(2e4)  # This should be enough to obtain nice results, however feel free to change it
+HIDDEN_LAYERS_SIZE = 128
 
-LANES = 3
+loss_function =  nn.SmoothL1Loss()  # nn.MSELoss() # nn.SmoothL1Loss() 
+
 
 ################################################################################
 
 # main #########################################################################
 
-# GPU? 
+# GPU? # depending on the hardware it may even be better to run everything on the cpu
 device = torch.device(
     "cuda" if torch.cuda.is_available() else
     "mps" if torch.backends.mps.is_available() else
     "cpu"
 )
-
+# device = 'cpu'
 print(f'>>> DEVICE =  {device}')
 
 # Environment creation 
@@ -80,7 +84,7 @@ env = gymnasium.make(env_name,
 print('>>> ENVIRONMENT INITIALIZED')
 
 # Initialize your model
-agent = DQN.DQN_agent(input_size=25, output_size=5, discount_factor = DISCOUNT_FACTOR ,loss_function = loss_function, lr = LR, device = device)
+agent = DQN.DQN_agent(input_size=STATE_DIMENSIONALITY, output_size=5, discount_factor = DISCOUNT_FACTOR ,loss_function = loss_function, lr = LR, device = device, hidden_size1=HIDDEN_LAYERS_SIZE, hidden_size2=HIDDEN_LAYERS_SIZE)
 Q_hat = DQN.DQN_agent(input_size=25, output_size=5)
 
 Q_hat.eval()
@@ -146,6 +150,11 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
     # Storing trnsition in the replay buffer
     replay_buffer.push(state_tensor, action, reward, next_state_tensor, done)
 
+    # removes the oldest sample when max size has benn exceeded, this keeps of reasonable
+    # size the buffer and removes older and less relevant steps
+    # if len(replay_buffer) > BUFFER_MAX_SIZE:
+    #     replay_buffer.popleft()
+
     state = next_state
     episode_return += reward
 
@@ -184,7 +193,7 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
 print('>>> TRAINING ENDED')
 
 # saving the trained model for evaluation
-torch.save(agent, 'trained_DQN_network.pt') 
+torch.save(agent, 'trained_DQN_agent.pt')
 print('>>> TRAINED DQN MODEL SAVED')
 
 

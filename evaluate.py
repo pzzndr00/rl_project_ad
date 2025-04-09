@@ -12,6 +12,15 @@ np.random.seed(2119275)
 random.seed(2119275)
 torch.manual_seed(2119275)
 
+# GPU? # depending on the hardware it may even be better to run everything on the cpu
+device = torch.device(
+    "cuda" if torch.cuda.is_available() else
+    "mps" if torch.backends.mps.is_available() else
+    "cpu"
+)
+# device = 'cpu'
+print(f'>>> DEVICE =  {device}')
+
 env_name = "highway-v0"
 
 env = gymnasium.make(env_name,
@@ -20,7 +29,7 @@ env = gymnasium.make(env_name,
 
 # Initialize your model and load parameters
 # agent = ag.AgentModel(input_size=25, output_size=5)
-DQN_agent = torch.load('trained_DQN_network.pt', weights_only = False) # weights_only true?
+DQN_agent = torch.load('trained_DQN_agent.pt', weights_only = False) # weights_only true?
 DQN_agent.to(device=device)
 
 DQN_agent.eval()
