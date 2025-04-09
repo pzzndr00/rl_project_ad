@@ -28,7 +28,7 @@ class trj_set(object):
 
         self.done.append(done)
 
-    def __len__(self):
+    def len(self):
         return len(self.states)
 
 
@@ -94,6 +94,12 @@ class PPO_agent(object):
     def training_step(self, trj_list:trj_list, loss_function = nn.MSELoss()):
         
         raise NotImplementedError
+
+    def act(self, state_tensor:torch.tensor):
+
+        probs = self.actor(state_tensor).cpu().detach().numpy()
+        action = random.choices(probs.shape[0], probs)
+        return action
 
     
 

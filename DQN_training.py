@@ -32,7 +32,7 @@ STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
 
 # BUFFER_MAX_SIZE = 15000
 BATCH_SIZE = 128
-LEARNING_START = 256
+LEARNING_START = 200
 
 
 # epsilon decay parameters
@@ -46,7 +46,7 @@ C = 50 # number of step from a copy of the weights of DQN onto Q_hat to the next
 
 HIDDEN_LAYERS_SIZE = 128
 
-loss_function =  nn.SmoothL1Loss()  # nn.MSELoss() # nn.SmoothL1Loss() 
+loss_function =  nn.MSELoss()  # nn.MSELoss() # nn.SmoothL1Loss() 
 
 
 ################################################################################
@@ -87,7 +87,8 @@ print('>>> ENVIRONMENT INITIALIZED')
 agent = DQN.DQN_agent(input_size=STATE_DIMENSIONALITY, output_size=5, discount_factor = DISCOUNT_FACTOR ,loss_function = loss_function, lr = LR, device = device, hidden_size1=HIDDEN_LAYERS_SIZE, hidden_size2=HIDDEN_LAYERS_SIZE)
 Q_hat = DQN.DQN_agent(input_size=25, output_size=5)
 
-Q_hat.eval()
+agent.train() # training mode
+Q_hat.eval()  # evaluation mode
 
 # moving the models to the gpu if available
 agent.to(device=device)
