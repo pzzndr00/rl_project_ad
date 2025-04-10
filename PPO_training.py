@@ -2,8 +2,9 @@ import gymnasium
 import highway_env
 import numpy as np
 import torch
+import torch.nn as nn
 import random
-
+import tqdm
 import PPO
 import memoryBuffer as mb
 
@@ -30,6 +31,17 @@ loss_function =  nn.SmoothL1Loss()  # nn.MSELoss() # nn.SmoothL1Loss()
 
 
 BATCH_SIZE = 500
+
+# GPU? # depending on the hardware it may even be better to run everything on the cpu
+device = torch.device(
+    "cuda" if torch.cuda.is_available() else
+    "mps" if torch.backends.mps.is_available() else
+    "cpu"
+)
+# device = 'cpu'
+print(f'>>> DEVICE =  {device}')
+
+
 # Set the seed and create the environment
 np.random.seed(2119275)
 random.seed(2119275)
@@ -51,7 +63,7 @@ env = gymnasium.make(env_name,
                         'lanes_count': LANES,
                         'absolute': False,
                         'duration': 40, "vehicles_count": 50},
-                        # render_mode = 'human'
+                        render_mode = 'human'
                         )
 
 print('>>> ENVIRONMENT INITIALIZED')
@@ -76,7 +88,7 @@ episode_return = 0
 
 # Training loop
 
-for t in range(MAX_STEPS):
+for t in tqdm.trange(MAX_STEPS):
     episode_steps += 1
 
     # conversion of the state numpy array into a pyTorch tensor
@@ -98,20 +110,14 @@ for t in range(MAX_STEPS):
     # Store transition in memory and train your model
     replay_buffer.push(state_tensor, action, reward, next_state_tensor, done)
 
-    
-    if len(replay_buffer) >= BATCH_SIZE:
-        PPO_agent.training_step(trj_set) 
-
-        # clearing the replay buffer
-        replay_buffer.clear()
-
+    agent.training_step(batch_size = BATCH_SIZE, replay_buffer = replay_buffer)
 
 
     if done or truncated:
-        print(f"Total T: {t} Episode Num: {episode} Episode T: {episode_steps} Return: {episode_return:.3f}")
+        # print(f"Total T: {t} Episode Num: {episode} Episode T: {episode_steps} Return: {episode_return:.3f}")
 
         # Save training information and model parameters
-        r
+        
 
         state, _ = env.reset()
         state = state.reshape(-1)

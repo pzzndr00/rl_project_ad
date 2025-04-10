@@ -38,3 +38,19 @@ t1 = torch.tensor([1,2,3,4])
 t2 = torch.tensor([1,2,3,4])
 
 print(t1/t2)
+
+
+
+bool_tensor = torch.tensor([True, False, True])  # dtype=torch.bool
+
+# Option 1: Cast to int32
+int_tensor = bool_tensor.int()  # dtype=torch.int32
+
+# Option 2: Cast to int64 (common default for indexing etc.)
+long_tensor = bool_tensor.long()  # dtype=torch.int64
+
+# Option 3: Generic casting
+int_tensor_alt = bool_tensor.to(torch.int)
+
+
+print(numpy.arange(5))

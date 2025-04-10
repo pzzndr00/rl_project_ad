@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-# import torch.nn.functional as F
 import random
 import numpy as np
 
@@ -44,37 +43,27 @@ class DQN_agent(nn.Module):
 
         batch_tr = mb.Transition(*zip(*batch))
 
-        state_batch = torch.cat(batch_tr.state).reshape((-1, self.input_size))       
-        action_batch = np.array(batch_tr.action)
-        reward_batch = np.array(batch_tr.reward)
-        next_state_batch = torch.cat(batch_tr.next_state).reshape((-1, self.input_size))
-        done_batch = list(batch_tr.done)
-        
-        # moving tensors to device
-        state_batch = state_batch.to(device=device)
-        next_state_batch = next_state_batch.to(device=device)
+        state_batch_tensor = torch.cat(batch_tr.state).reshape((-1, self.input_size)).to(device=device).to(torch.float) # for each row a step       
+        action_batch = np.array(batch_tr.action) # row vector containing the selected action for every sampled transition
+        reward_batch_tensor = torch.tensor(batch_tr.reward).to(device=device).to(torch.float) # row vector
+        next_state_batch_tensor = torch.cat(batch_tr.next_state).reshape((-1, self.input_size)).to(device=device).to(torch.float) # for each row a step  
 
-        Q_values = torch.zeros(batch_size)
-        Q_values = Q_values.to(device = device)
+        done_batch_tensor = torch.tensor(batch_tr.done).to(device=device) # row vector of zeros and ones 
+        done_float_batch_tensor = done_batch_tensor.to(torch.float)
 
-        y = torch.zeros(batch_size)
-        y = y.to(device=device)
- 
-        for i in range(batch_size):
+        # selected actions Q values
+        Q_vals = self(state_batch_tensor)
+        Q_vals = Q_vals[torch.arange(Q_vals.size(0)), action_batch] # row vector with values only for selected actions
 
-            if done_batch[i]:
-                y[i] = reward_batch[i]
-            else:
-                Q_hat_next = Q_hat(next_state_batch[i])
-                max_Q_hat_next = Q_hat_next.max().item()
 
-                y[i] = reward_batch[i] + self.discount_factor * max_Q_hat_next
+        # max Q values for next state
+        with torch.no_grad():
+            max_Q_hat_vals_next = torch.max(self(next_state_batch_tensor), dim=1)[0] # row vector
 
-            # for each sample compute the current agent action values
-            Q_values[i] = self(state_batch[i])[action_batch[i]]
-        
+        y = reward_batch_tensor + self.discount_factor * max_Q_hat_vals_next * (1-done_float_batch_tensor)
+
         # computation of the loss and training step
-        loss = self.loss_function(Q_values, y)
+        loss = self.loss_function(Q_vals, y)
 
         self.optimizer.zero_grad()
         loss.backward()
