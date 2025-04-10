@@ -28,3 +28,7 @@ class memory(object):
 
     def __len__(self):
         return len(self.memory)
+
+    def clear(self):
+        self.memory.clear()
+        return

@@ -5,6 +5,7 @@ import torch
 import random
 
 import PPO
+import memoryBuffer as mb
 
 # Constants and parameters #####################################################
 MAX_STEPS = int(2e4)  # This should be enough to obtain nice results, however feel free to change it
@@ -27,6 +28,8 @@ HIDDEN_LAYERS_SIZE = 128
 
 loss_function =  nn.SmoothL1Loss()  # nn.MSELoss() # nn.SmoothL1Loss() 
 
+
+BATCH_SIZE = 500
 # Set the seed and create the environment
 np.random.seed(2119275)
 random.seed(2119275)
@@ -36,11 +39,31 @@ MAX_STEPS = int(2e4)  # This should be enough to obtain nice results, however fe
 env_name = "highway-fast-v0"  # We use the 'fast' env just for faster training, if you want you can use "highway-v0"
 
 env = gymnasium.make(env_name,
-                     config={'action': {'type': 'DiscreteMetaAction'}, 'duration': 40, "vehicles_count": 50})
+                     config={
+                        'observation':{
+                            'type': 'Kinematics',
+                            "features": ["presence", "x", "y", "vx", "vy"],
+                        },
+                        
+                        'action': {
+                            'type': 'DiscreteMetaAction'
+                        },
+                        'lanes_count': LANES,
+                        'absolute': False,
+                        'duration': 40, "vehicles_count": 50},
+                        # render_mode = 'human'
+                        )
+
+print('>>> ENVIRONMENT INITIALIZED')
+
+# initialization of the replay buffer
+replay_buffer = mb.memory(MAX_STEPS)
+print('>>> REPLAY BUFFER INITIALIZED')
+
+
 
 # Initialize your model
-agent = PPO.PPO_agent(state_size=STATE_DIMENSIONALITY, actions_set_cardinality=5, env = env, device = device) # da rivedere solo provissoria
-raise NotImplementedError
+agent = PPO.PPO_agent(state_size=STATE_DIMENSIONALITY, actions_set_cardinality=5, env = env, device = device)
 
 
 state, _ = env.reset()
@@ -52,7 +75,6 @@ episode_steps = 0
 episode_return = 0
 
 # Training loop
-trj_set = PPO.trj_set()
 
 for t in range(MAX_STEPS):
     episode_steps += 1
@@ -61,11 +83,12 @@ for t in range(MAX_STEPS):
     state_tensor = torch.from_numpy(state).to(device=device)
 
     # Select the action to be performed by the agent
-    action = agent.act(state_tensor=state_tensor)
+    action,_ = agent.act(state_tensor=state_tensor)
 
     next_state, reward, done, truncated, _ = env.step(action)
     next_state = next_state.reshape(-1)
 
+    # next state tensor
     next_state_tensor = torch.from_numpy(next_state).to(device=device)
 
     state = next_state
@@ -73,18 +96,22 @@ for t in range(MAX_STEPS):
 
 
     # Store transition in memory and train your model
-    probs = agent.actor(state_tensor).cpu().detach().numpy() # temporary not clear what to save exactly yet
-    trj.append_transition(state = state_tensor, action = action, reward = reward, next_state = next_state_tensor, probs = probs, done = done)
+    replay_buffer.push(state_tensor, action, reward, next_state_tensor, done)
 
-    # every tot iteration train
-    if t%500 == 0: 
-        raise NotImplementedError
+    
+    if len(replay_buffer) >= BATCH_SIZE:
+        PPO_agent.training_step(trj_set) 
+
+        # clearing the replay buffer
+        replay_buffer.clear()
+
+
 
     if done or truncated:
         print(f"Total T: {t} Episode Num: {episode} Episode T: {episode_steps} Return: {episode_return:.3f}")
 
         # Save training information and model parameters
-        raise NotImplementedError
+        r
 
         state, _ = env.reset()
         state = state.reshape(-1)

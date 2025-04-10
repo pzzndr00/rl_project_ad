@@ -42,13 +42,13 @@ class DQN_agent(nn.Module):
         # batch sampling and conversion to tensors #############################
         batch = replay_buffer.sample(batch_size = batch_size)
 
-        batch_zip = mb.Transition(*zip(*batch))
+        batch_tr = mb.Transition(*zip(*batch))
 
-        state_batch = torch.cat(batch_zip.state).reshape((-1, self.input_size))       
-        action_batch = np.array(batch_zip.action)
-        reward_batch = np.array(batch_zip.reward)
-        next_state_batch = torch.cat(batch_zip.next_state).reshape((-1, self.input_size))
-        done_batch = list(batch_zip.done)
+        state_batch = torch.cat(batch_tr.state).reshape((-1, self.input_size))       
+        action_batch = np.array(batch_tr.action)
+        reward_batch = np.array(batch_tr.reward)
+        next_state_batch = torch.cat(batch_tr.next_state).reshape((-1, self.input_size))
+        done_batch = list(batch_tr.done)
         
         # moving tensors to device
         state_batch = state_batch.to(device=device)
