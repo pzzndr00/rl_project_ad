@@ -227,7 +227,7 @@ returns_plot.set_ylabel("Return")
 
 # Plot REWARDS
 rewards_plot.set_title("REWARDS")
-rewards_plot.plot(episode_return_history, color='green')  # Consider plotting reward per step if available
+rewards_plot.plot(rewards_history_history, color='green')  # Consider plotting reward per step if available
 rewards_plot.set_xlabel("Episodes")
 rewards_plot.set_ylabel("Rewards")
 
@@ -250,4 +250,3 @@ plt.close('all')
 
 env.close()
 
-print('>>> PROGRAM TERMINATED')

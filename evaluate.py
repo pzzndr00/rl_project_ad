@@ -3,9 +3,15 @@ import highway_env
 import numpy as np
 import torch
 import random
-import DQN
 
-device = 'cpu'
+# my modules
+import DQN
+import PPO
+
+# alternatives: 
+# 'DQN'
+# 'PPO'
+AGENT_TO_BE_TESTED = 'PPO'
 
 # Set the seed and create the environment
 np.random.seed(2119275)
@@ -28,11 +34,27 @@ env = gymnasium.make(env_name,
                      render_mode='human')
 
 # Initialize your model and load parameters
-# agent = ag.AgentModel(input_size=25, output_size=5)
-DQN_agent = torch.load('trained_DQN_agent.pt', weights_only = False) # weights_only true?
-DQN_agent.to(device=device)
+match(AGENT_TO_BE_TESTED):
 
-DQN_agent.eval()
+    case 'DQN':
+        print('>>> DQN model test')
+        # model initialization
+        DQN_agent = torch.load('trained_DQN_agent.pt', weights_only = False) # weights_only true?
+        DQN_agent.to(device=device)
+        DQN_agent.eval()
+       
+
+    case 'PPO':
+        print('>>> PPO model test')
+        # model initialization
+        PPO_agent = torch.load('trained_PPO_agent.pt', weights_only = False)
+        PPO_agent.to(device=device)
+        PPO_agent.eval()
+
+    case _:
+        raise Exception('AGENT_TO_BE_TESTED is not valid, must be: DQN or PPO')
+
+
 
 # Evaluation loop
 state, _ = env.reset()
@@ -47,9 +69,22 @@ while episode <= 10:
     episode_steps += 1
     state_tensor = torch.from_numpy(state)
     state_tensor = state_tensor.to(device=device)
+
     # Select the action to be performed by the agent
-    
-    action = DQN_agent.act_greedy(state_tensor)
+    # Initialize your model and load parameters
+    match(AGENT_TO_BE_TESTED):
+
+        case 'DQN':
+            # action selection DQN
+            action = DQN_agent.act_greedy(state_tensor)
+
+
+        case 'PPO':
+            action,_ = PPO_agent.act(state_tensor=state_tensor)
+
+        case _:
+            raise Exception('AGENT_TO_BE_TESTED is not valid, must be:# BASELINE or DQN or PPO')
+        
 
     # Hint: take a look at the docs to see the difference between 'done' and 'truncated'
     state, reward, done, truncated, _ = env.step(action)
@@ -66,5 +101,8 @@ while episode <= 10:
         episode += 1
         episode_steps = 0
         episode_return = 0
+
+
+
 
 env.close()

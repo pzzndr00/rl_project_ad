@@ -6,34 +6,6 @@ import numpy as np
 # my modules
 import memoryBuffer as mb
 
-# class trj_set(object):
-#     def __init__(self):
-#         super(trajectory, self).__init__()
-
-#         self.states = []        # S
-#         self.actions = []       # A
-#         self.rewards = []       # R
-#         self.next_states = []   # S' redoundant but helps in training
-        
-#         self.done = []
-
-#     def append_transition(self, state, action, reward, next_state, probs, done):
-
-#         self.states.append(state)
-#         self.actions.append(action)
-#         self.rewards.append(reward)
-#         self.next_states.append(next_state)
-
-#         self.probs.append(probs)
-
-#         self.done.append(done)
-
-#     def __len__(self):
-#         return len(self.states)
-
-
-
-
 class PPO_actor(nn.Module):
     def __init__(self, input_size, output_size, hidden_size1 = 128, hidden_size2 = 128):
         super(PPO_actor, self).__init__()
@@ -42,15 +14,15 @@ class PPO_actor(nn.Module):
         self.fc2 = nn.Linear(in_features=hidden_size1, out_features=hidden_size2) # second hidden layer
         self.fc3 = nn.Linear(in_features=hidden_size2, out_features=output_size) # output layer
 
-        self.act = nn.ReLU() # hidden layers activation function
-        self.out_act = nn.Softmax(dim=0)
+        self.activation = nn.ReLU() # hidden layers activation function
+        self.out_act = nn.Softmax(dim=-1)
 
         self.input_size = input_size
         self.output_size = output_size
 
     def forward(self, x):
-        x = self.act(self.fc1(x))
-        x = self.act(self.fc2(x))
+        x = self.activation(self.fc1(x))
+        x = self.activation(self.fc2(x))
         
         out = self.out_act(self.fc3(x)) # softmax output activation
         return out
@@ -63,14 +35,14 @@ class PPO_critic(nn.Module):
         self.fc2 = nn.Linear(in_features=hidden_size1, out_features=hidden_size2) # second hidden layer
         self.fc3 = nn.Linear(in_features=hidden_size2, out_features = 1) # output layer
 
-        self.act = nn.ReLU() # hidden layers activation function
+        self.activation = nn.ReLU() # hidden layers activation function
 
         self.input_size = input_size
         self.output_size = 1
         
     def forward(self, x):
-        x = self.act(self.fc1(x))
-        x = self.act(self.fc2(x))
+        x = self.activation(self.fc1(x))
+        x = self.activation(self.fc2(x))
         
         out = self.fc3(x) # identity output activation
         return out
@@ -95,7 +67,7 @@ class clip_loss(nn.Module):
 
 class PPO_agent(nn.Module):
 
-    def __init__(self, state_size, actions_set_cardinality, env, discount_factor = 0.8, clip_eps = 0.1, lr = 1e-4, actor_rep = 15, critic_rep= 5, device = torch.device('cpu')):
+    def __init__(self, state_size, actions_set_cardinality, env, discount_factor = 0.99, clip_eps = 0.2, lr = 1e-4, actor_rep = 15, critic_rep= 5, device = torch.device('cpu')):
         super(PPO_agent, self).__init__()
 
         self.device = device
@@ -121,7 +93,6 @@ class PPO_agent(nn.Module):
     def forward(self, x):
         return self.actor(x), self.critic(x)
 
-
     def training_step(self, batch_size:int,  replay_buffer:mb.memory, critic_loss_function = nn.MSELoss()):
         
         device = self.device
@@ -145,7 +116,8 @@ class PPO_agent(nn.Module):
         states_vals_cr = self.critic(state_batch_tensor).reshape(-1) # column vector to row vector
         next_states_vals_cr = self.critic(next_state_batch_tensor).reshape(-1) # column vector to row vector
 
-        initial_action_probs_ac = self.actor(state_batch_tensor)[np.arange(batch_size), action_batch] # row vector with selected action pi_old(at|st)
+        with torch.no_grad():
+            initial_action_probs_ac = self.actor(state_batch_tensor)[np.arange(batch_size), action_batch] # row vector with selected action pi_old(at|st)
 
         # computes rewards to go using TD(0) target
 
@@ -164,8 +136,8 @@ class PPO_agent(nn.Module):
             loss_actor = self.actor_loss_fcn(td_error=td_error, importance_sampling_ratio=importance_sampling_ratio, clip_eps = self.clip_eps)
             
             loss_actor.backward(retain_graph=True)
-
             self.actor_opt.zero_grad()
+            
             self.actor_opt.step()
 
 
@@ -179,11 +151,12 @@ class PPO_agent(nn.Module):
             rewards_to_go = reward_batch_tensor + self.discount_factor*next_states_vals_cr*(1-done_float_batch_tensor)
 
             loss_critic = critic_loss_function(states_vals_cr, rewards_to_go)
-
             loss_critic.backward()
-
             self.critic.zero_grad()
+            
             self.critic_opt.step()
+
+        return loss_actor, loss_critic
 
     def act(self, state_tensor:torch.tensor):
         """
