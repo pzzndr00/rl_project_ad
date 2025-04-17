@@ -2,6 +2,8 @@
 import numpy as np
 import random
 import torch
+import matplotlib.pyplot as plt
+
 
 import gymnasium
 import highway_env
@@ -174,10 +176,10 @@ random.seed(2119275)
 torch.manual_seed(2119275)
 
 MAX_STEPS = int(2e4)  # This should be enough to obtain nice results, however feel free to change it
-env_name = "highway-v0" #"highway-fast-v0"  # We use the 'fast' env just for faster training, if you want you can use "highway-v0"
+env_name = "highway-fast-v0"  #"highway-v0" #"highway-fast-v0"  # We use the 'fast' env just for faster training, if you want you can use "highway-v0"
 
 LANES = 3
-EPISODES = 10
+EPISODES = 100
 
 env = gymnasium.make(env_name,
                      config={
@@ -194,6 +196,11 @@ env = gymnasium.make(env_name,
                         'duration': 40, "vehicles_count": 50},
                         render_mode = 'human'
                         )
+
+# evaluation data
+steps = []
+returns = []
+dones = []
 
 obs, info = env.reset()
 done, truncated = False, False
@@ -216,11 +223,30 @@ while episode <= EPISODES:
     if done or truncated:
         print(f"Episode Num: {episode} Episode T: {episode_steps} Return: {episode_return:.3f}, Crash: {done}")
 
+        steps.append(episode_steps)
+        returns.append(episode_return)
+        dones.append(done)
+
         env.reset()
         episode += 1
         episode_steps = 0
         episode_return = 0
 
-
 env.close()
 
+print('>>> EVALUATION ENDED')
+print(f'Number of episodes: {EPISODES}')
+print(f'Average episode return: {np.mean(returns)}, Average episode number of steps: {np.mean(steps)}, Times crashed: {np.count_nonzero(dones)}, ( percentage: {100*np.count_nonzero(dones)/EPISODES}% )')
+print(f'Episode returns std: {np.std(returns)}, Episode number of steps std: {np.std(steps)}')
+
+
+
+plt.figure('Plot returns distribution')
+plt.hist(returns)
+plt.xlabel('Return')
+
+plt.figure('Plot steps number distribution')
+plt.hist(steps)
+plt.xlabel('Steps')
+
+plt.show()

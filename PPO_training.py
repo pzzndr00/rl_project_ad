@@ -19,9 +19,9 @@ LANES = 3
 STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
 
 
-DISCOUNT_FACTOR = 0.8 
-LR = 2.5e-4 # learning rate
-CLIP_EPS = 0.2
+DISCOUNT_FACTOR = 0.8
+LR = 1e-4 # learning rate
+CLIP_EPS = 0.1
 ACTOR_REP = 15
 CRITIC_REP = 5
 

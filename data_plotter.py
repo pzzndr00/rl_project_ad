@@ -22,7 +22,7 @@ filt_DQN_rewards = moving_avg_filter(DQN_rewards)
 
 # loss
 plt.figure('DQN loss')
-plt.suptitle('DQN loss')
+#plt.suptitle('DQN loss')
 plt.plot(DQN_loss, color = 'mistyrose', label = 'raw data')
 plt.plot(filt_DQN_loss, color = 'red', label = 'filtered data')
 plt.legend()
@@ -30,7 +30,7 @@ plt.xlabel('Training steps')
 
 # rewards - not the most useful
 plt.figure('DQN rewards')
-plt.suptitle('DQN rewards')
+#plt.suptitle('DQN rewards')
 plt.plot(DQN_rewards, color = 'mistyrose', label = 'raw data')
 plt.plot(filt_DQN_rewards, color = 'red', label = 'filtered data')
 plt.legend()
@@ -43,7 +43,7 @@ filt_DQN_episodes_steps = moving_avg_filter(DQN_episodes_steps)
 
 # returns
 plt.figure('DQN returns')
-plt.suptitle('DQN returns')
+#plt.suptitle('DQN returns')
 plt.plot(DQN_returns, color = 'mistyrose', label = 'raw data')
 plt.plot(filt_DQN_returns, color = 'red', label = 'filtered data')
 plt.legend()
@@ -51,7 +51,7 @@ plt.xlabel('Episodes')
 
 # episode steps
 plt.figure('DQN episodes steps')
-plt.suptitle('DQN episode steps')
+#plt.suptitle('DQN episode steps')
 plt.plot(DQN_episodes_steps, color = 'mistyrose', label = 'raw data')
 plt.plot(filt_DQN_episodes_steps, color = 'red', label = 'filtered data')
 plt.legend()
@@ -67,7 +67,7 @@ filt_PPO_rewards = moving_avg_filter(PPO_rewards)
 
 # PPO actor loss
 plt.figure('PPO actor loss')
-plt.suptitle('PPO actor loss')
+#plt.suptitle('PPO actor loss')
 plt.plot(PPO_actor_loss, color = 'mistyrose', label = 'raw data')
 plt.plot(filt_PPO_actor_loss, color = 'red', label = 'filtered data')
 plt.legend()
@@ -75,7 +75,7 @@ plt.xlabel('Training steps')
 
 # PPO critic loss
 plt.figure('PPO critic loss')
-plt.suptitle('PPO critic loss')
+#plt.suptitle('PPO critic loss')
 plt.plot(PPO_critic_loss, color = 'mistyrose', label = 'raw data')
 plt.plot(filt_PPO_critic_loss, color = 'red', label = 'filtered data')
 plt.legend()
@@ -83,7 +83,7 @@ plt.xlabel('Training steps')
 
 # PPO rewards - not very useful
 plt.figure('PPO rewards')
-plt.suptitle('PPO rewards')
+#plt.suptitle('PPO rewards')
 plt.plot(PPO_rewards, color = 'mistyrose', label = 'raw data')
 plt.plot(filt_PPO_rewards, color = 'red', label = 'filtered data')
 plt.legend()
@@ -96,7 +96,7 @@ filt_PPO_episodes_steps = moving_avg_filter(PPO_episodes_steps)
 
 # returns
 plt.figure('PPO returns')
-plt.suptitle('PPO returns')
+#plt.suptitle('PPO returns')
 plt.plot(PPO_returns, color = 'mistyrose', label = 'raw data')
 plt.plot(filt_PPO_returns, color = 'red', label = 'filtered data')
 plt.legend()
@@ -104,7 +104,7 @@ plt.xlabel('Episodes')
 
 # episode steps
 plt.figure('PPO episodes steps')
-plt.suptitle('PPO episode steps')
+#plt.suptitle('PPO episode steps')
 plt.plot(PPO_episodes_steps, color = 'mistyrose', label = 'raw data')
 plt.plot(filt_PPO_episodes_steps, color = 'red', label = 'filtered data')
 plt.legend()

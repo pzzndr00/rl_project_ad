@@ -42,11 +42,11 @@ EPS_DECAY = 1000
 
 DISCOUNT_FACTOR = 0.8 # better results when 0.7 - 0.8 rather than > 0.8
 LR = 5e-4 # learning rate
-C = 50 # number of step from a copy of the weights of DQN onto Q_hat to the next
+C = 10 # number of step from a copy of the weights of DQN onto Q_hat to the next
 
 HIDDEN_LAYERS_SIZE = 128
 
-loss_function =  nn.MSELoss()  # nn.MSELoss() # nn.SmoothL1Loss() 
+loss_function =  nn.SmoothL1Loss()  # nn.MSELoss() # nn.SmoothL1Loss() 
 
 
 ################################################################################
@@ -227,7 +227,7 @@ returns_plot.set_ylabel("Return")
 
 # Plot REWARDS
 rewards_plot.set_title("REWARDS")
-rewards_plot.plot(rewards_history_history, color='green')  # Consider plotting reward per step if available
+rewards_plot.plot(rewards_history, color='green')  # Consider plotting reward per step if available
 rewards_plot.set_xlabel("Episodes")
 rewards_plot.set_ylabel("Rewards")
 

@@ -84,7 +84,7 @@ class PPO_agent(nn.Module):
         self.critic.to(self.device)
 
         self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr = lr)
-        self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr = 3*lr)
+        self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr = 5*lr)
 
         self.input_size = state_size
 
@@ -93,7 +93,7 @@ class PPO_agent(nn.Module):
     def forward(self, x):
         return self.actor(x), self.critic(x)
 
-    def training_step(self, batch_size:int,  replay_buffer:mb.memory, critic_loss_function = nn.MSELoss()):
+    def training_step(self, batch_size:int,  replay_buffer:mb.memory, critic_loss_fcn = nn.MSELoss()):
         
         device = self.device
 
@@ -123,7 +123,7 @@ class PPO_agent(nn.Module):
 
         rewards_to_go = reward_batch_tensor + self.discount_factor*next_states_vals_cr*(1-done_float_batch_tensor)
 
-        td_error = rewards_to_go - states_vals_cr # approximation of the advantage
+        td_error = rewards_to_go - states_vals_cr # used as an approximation of the advantage
         
         # actor parameters oprtimization
 
@@ -150,7 +150,7 @@ class PPO_agent(nn.Module):
             
             rewards_to_go = reward_batch_tensor + self.discount_factor*next_states_vals_cr*(1-done_float_batch_tensor)
 
-            loss_critic = critic_loss_function(states_vals_cr, rewards_to_go)
+            loss_critic = critic_loss_fcn(states_vals_cr, rewards_to_go)
             loss_critic.backward()
             self.critic.zero_grad()
             
