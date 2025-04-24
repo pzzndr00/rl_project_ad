@@ -117,14 +117,14 @@ class PPO_agent(nn.Module):
         next_states_vals_cr = self.critic(next_state_batch_tensor).reshape(-1) # column vector to row vector
 
         with torch.no_grad():
-            initial_action_probs_ac = self.actor(state_batch_tensor)[np.arange(batch_size), action_batch] # row vector with selected action pi_old(at|st)
+            initial_action_probs_ac = self.actor(state_batch_tensor)[np.arange(batch_size), action_batch].detach() # row vector with selected action pi_old(at|st)
 
         # computes rewards to go using TD(0) target
 
         rewards_to_go = reward_batch_tensor + self.discount_factor*next_states_vals_cr*(1-done_float_batch_tensor)
 
-        td_error = rewards_to_go - states_vals_cr # used as an approximation of the advantage
-        
+        td_error = (rewards_to_go - states_vals_cr).detach()  # used as an approximation of the advantage
+        # detach() needed to avoid RuntimeError: Trying to backward through the graph a second time
         # actor parameters oprtimization
 
         for _ in range(self.actor_rep):
@@ -135,7 +135,7 @@ class PPO_agent(nn.Module):
 
             # loss_actor = self.actor_loss_fcn(td_error=td_error, importance_sampling_ratio=importance_sampling_ratio, clip_eps = self.clip_eps)
             
-            loss_actor = -torch.mean(   torch.minimum(
+            loss_actor = -torch.mean(   torch.min(
                                             td_error * importance_sampling_ratio, 
                                             td_error * torch.clip(importance_sampling_ratio, min = 1-self.clip_eps, max = 1+self.clip_eps)
                                             )
@@ -145,6 +145,7 @@ class PPO_agent(nn.Module):
             self.actor_opt.zero_grad()
             
             self.actor_opt.step()
+
 
 
 

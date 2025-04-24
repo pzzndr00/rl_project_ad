@@ -13,7 +13,7 @@ import PPO
 # 'DQN'
 # 'Duelling_DQN
 # 'PPO'
-AGENT_TO_BE_TESTED = 'Duelling_DQN'
+AGENT_TO_BE_TESTED = 'DQN'
 
 # Set the seed and create the environment
 np.random.seed(2119275)
@@ -103,14 +103,17 @@ while episode <= EPISODES:
         case 'DQN':
             # action selection DQN
             action = DQN_agent.act_greedy(state_tensor)
+            print('>>> DQN TEST')
 
         case 'Duelling_DQN':
             # action selection Duelling DQN
             action = Duelling_DQN_agent.act_greedy(state_tensor)
+            print('>>> Duelling_DQN TEST')
 
         case 'PPO':
             # action selection PPO
             action,_ = PPO_agent.act(state_tensor=state_tensor)
+            print('>>> PPO TEST')
 
         case _:
             raise Exception('AGENT_TO_BE_TESTED is not valid, must be: DQN or Duelling_DQN or PPO')

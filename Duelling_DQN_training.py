@@ -38,7 +38,7 @@ EPS_START = 0.95
 EPS_END = 0.05
 EPS_DECAY = MAX_STEPS/20
 
-DISCOUNT_FACTOR = 0.75 # better results when 0.7 - 0.8 rather than > 0.8
+DISCOUNT_FACTOR = 0.725 # better results when 0.7 - 0.8 rather than > 0.8
 LR = 5e-4 # learning rate
 C = 10 # number of step from a copy of the weights of DQN onto Q_hat to the next
 
