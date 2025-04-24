@@ -67,7 +67,7 @@ class clip_loss(nn.Module):
 
 class PPO_agent(nn.Module):
 
-    def __init__(self, state_size, actions_set_cardinality, env, discount_factor = 0.99, clip_eps = 0.2, lr = 1e-4, actor_rep = 15, critic_rep= 5, device = torch.device('cpu')):
+    def __init__(self, state_size, actions_set_cardinality, env, discount_factor = 0.99, clip_eps = 0.2, actor_lr = 2.5e-4, critic_lr = 1e-3, actor_rep = 15, critic_rep= 5, device = torch.device('cpu')):
         super(PPO_agent, self).__init__()
 
         self.device = device
@@ -83,8 +83,8 @@ class PPO_agent(nn.Module):
         self.critic = PPO_critic(input_size=state_size)  # critic model
         self.critic.to(self.device)
 
-        self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr = lr)
-        self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr = 5*lr)
+        self.actor_opt = torch.optim.Adam(self.actor.parameters(), actor_lr)
+        self.critic_opt = torch.optim.Adam(self.critic.parameters(), critic_lr)
 
         self.input_size = state_size
 
@@ -133,9 +133,15 @@ class PPO_agent(nn.Module):
 
             importance_sampling_ratio = action_probs_ac / initial_action_probs_ac
 
-            loss_actor = self.actor_loss_fcn(td_error=td_error, importance_sampling_ratio=importance_sampling_ratio, clip_eps = self.clip_eps)
+            # loss_actor = self.actor_loss_fcn(td_error=td_error, importance_sampling_ratio=importance_sampling_ratio, clip_eps = self.clip_eps)
             
-            loss_actor.backward(retain_graph=True)
+            loss_actor = -torch.mean(   torch.minimum(
+                                            td_error * importance_sampling_ratio, 
+                                            td_error * torch.clip(importance_sampling_ratio, min = 1-self.clip_eps, max = 1+self.clip_eps)
+                                            )
+                            )
+
+            loss_actor.backward()
             self.actor_opt.zero_grad()
             
             self.actor_opt.step()

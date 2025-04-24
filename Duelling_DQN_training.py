@@ -38,13 +38,13 @@ EPS_START = 0.95
 EPS_END = 0.05
 EPS_DECAY = MAX_STEPS/20
 
-DISCOUNT_FACTOR = 0.775 # better results when 0.7 - 0.8 rather than > 0.8
+DISCOUNT_FACTOR = 0.75 # better results when 0.7 - 0.8 rather than > 0.8
 LR = 5e-4 # learning rate
 C = 10 # number of step from a copy of the weights of DQN onto Q_hat to the next
 
-HIDDEN_LAYERS_SIZE = 128
 
-loss_function =  nn.SmoothL1Loss()  # nn.MSELoss() # nn.SmoothL1Loss() 
+
+loss_function =  nn.MSELoss()  # nn.MSELoss() # nn.SmoothL1Loss() 
 
 ################################################################################
 
@@ -81,8 +81,8 @@ env = gymnasium.make(env_name,
 print('>>> ENVIRONMENT INITIALIZED')
 
 # Initialize your model
-agent = DQN.DQN_agent(input_size=STATE_DIMENSIONALITY, output_size=5, discount_factor = DISCOUNT_FACTOR ,loss_function = loss_function, lr = LR, device = device, hidden_size1=HIDDEN_LAYERS_SIZE, hidden_size2=HIDDEN_LAYERS_SIZE)
-Q_hat = DQN.DQN_agent(input_size=25, output_size=5)
+agent = DQN.Duelling_DQN_agent(input_size=STATE_DIMENSIONALITY, output_size=5, discount_factor = DISCOUNT_FACTOR ,loss_function = loss_function, lr = LR, device = device, adv_type = 'mean')
+Q_hat = DQN.Duelling_DQN_agent(input_size=STATE_DIMENSIONALITY, output_size=5)
 
 agent.train() # training mode
 Q_hat.eval()  # evaluation mode
@@ -192,8 +192,8 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
 print('>>> TRAINING ENDED')
 
 # saving the trained model for evaluation
-torch.save(agent, 'trained_DQN_agent.pt')
-print('>>> TRAINED DQN MODEL SAVED')
+torch.save(agent, 'trained_Duelling_DQN_agent.pt')
+print('>>> TRAINED DUELLING DQN MODEL SAVED')
 
 
 ################################################################################
@@ -201,8 +201,8 @@ print('>>> TRAINED DQN MODEL SAVED')
 # TRAINING DATA PLOTS AND SAVING ###############################################
 
 # saving data
-np.savetxt('training_data/DQN/DQN_training_data_loss_and_rewards.csv', np.transpose([loss_vals_history, rewards_history]), header= 'Loss,rewards',delimiter = ',')
-np.savetxt('training_data/DQN/DQN_training_data_returns_episode_length.csv', np.transpose([episode_return_history, episode_length_history]), header='returns,episode_length', delimiter=',')
+np.savetxt('training_data/DQN/Duelling_DQN_training_data_loss_and_rewards.csv', np.transpose([loss_vals_history, rewards_history]), header= 'Loss,rewards',delimiter = ',')
+np.savetxt('training_data/DQN/Duelling_DQN_training_data_returns_episode_length.csv', np.transpose([episode_return_history, episode_length_history]), header='returns,episode_length', delimiter=',')
 
 
 # Create a 2x2 grid of subplots

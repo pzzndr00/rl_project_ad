@@ -11,8 +11,9 @@ import PPO
 
 # alternatives: 
 # 'DQN'
+# 'Duelling_DQN
 # 'PPO'
-AGENT_TO_BE_TESTED = 'DQN'
+AGENT_TO_BE_TESTED = 'Duelling_DQN'
 
 # Set the seed and create the environment
 np.random.seed(2119275)
@@ -28,7 +29,7 @@ device = torch.device(
 
 print(f'>>> DEVICE =  {device}')
 
-env_name = "highway-fast-v0" #"highway-v0"
+env_name = "highway-fast-v0" #"highway-fast-v0" #"highway-v0"
 LANES = 3
 env = gymnasium.make(env_name,
                      config={
@@ -55,7 +56,14 @@ match(AGENT_TO_BE_TESTED):
         DQN_agent = torch.load('trained_DQN_agent.pt', weights_only = False) # weights_only true?
         DQN_agent.to(device=device)
         DQN_agent.eval()
-       
+
+    case 'Duelling_DQN':
+        print('>>> DQN model test')
+        # model initialization
+        Duelling_DQN_agent = torch.load('trained_Duelling_DQN_agent.pt', weights_only = False) 
+        Duelling_DQN_agent.to(device=device)
+        Duelling_DQN_agent.eval()
+
 
     case 'PPO':
         print('>>> PPO model test')
@@ -65,7 +73,7 @@ match(AGENT_TO_BE_TESTED):
         PPO_agent.eval()
 
     case _:
-        raise Exception('AGENT_TO_BE_TESTED is not valid, must be: DQN or PPO')
+        raise Exception('AGENT_TO_BE_TESTED is not valid, must be: \'DQN\' or \'Duelling_DQN\' or \'PPO\'')
 
 # evaluation data
 steps = []
@@ -96,12 +104,16 @@ while episode <= EPISODES:
             # action selection DQN
             action = DQN_agent.act_greedy(state_tensor)
 
+        case 'Duelling_DQN':
+            # action selection Duelling DQN
+            action = Duelling_DQN_agent.act_greedy(state_tensor)
 
         case 'PPO':
+            # action selection PPO
             action,_ = PPO_agent.act(state_tensor=state_tensor)
 
         case _:
-            raise Exception('AGENT_TO_BE_TESTED is not valid, must be:# DQN or PPO')
+            raise Exception('AGENT_TO_BE_TESTED is not valid, must be: DQN or Duelling_DQN or PPO')
         
 
     # Hint: take a look at the docs to see the difference between 'done' and 'truncated'

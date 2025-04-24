@@ -12,7 +12,7 @@ import PPO
 import memoryBuffer as mb
 
 # Constants and parameters #####################################################
-MAX_STEPS = int(2e4)  # This should be enough to obtain nice results, however feel free to change it
+MAX_STEPS = int(2.5e4)  # This should be enough to obtain nice results, however feel free to change it
 
 LANES = 3
 
@@ -21,7 +21,7 @@ STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
 
 DISCOUNT_FACTOR = 0.8
 LR = 1e-4 # learning rate
-CLIP_EPS = 0.1
+CLIP_EPS = 0.2
 ACTOR_REP = 15
 CRITIC_REP = 5
 
@@ -30,7 +30,7 @@ HIDDEN_LAYERS_SIZE = 128
 critc_loss_function =  nn.MSELoss()  # nn.MSELoss() # nn.SmoothL1Loss() 
 
 
-BATCH_SIZE = 256
+BATCH_SIZE = 128
 
 # GPU? # depending on the hardware it may even be better to run everything on the cpu
 device = torch.device(
@@ -63,7 +63,7 @@ env = gymnasium.make(env_name,
                         'lanes_count': LANES,
                         'absolute': False,
                         'duration': 40, "vehicles_count": 50},
-                        render_mode = 'human'
+                        # render_mode = 'human'
                         )
 
 print('>>> ENVIRONMENT INITIALIZED')
@@ -75,7 +75,7 @@ print('>>> REPLAY BUFFER INITIALIZED')
 
 
 # Initialize your model
-agent = PPO.PPO_agent(state_size=STATE_DIMENSIONALITY, actions_set_cardinality=5, env = env, device = device, discount_factor=DISCOUNT_FACTOR, clip_eps=CLIP_EPS, lr = LR, actor_rep=ACTOR_REP, critic_rep=CRITIC_REP)
+agent = PPO.PPO_agent(state_size=STATE_DIMENSIONALITY, actions_set_cardinality=5, env = env, device = device, discount_factor=DISCOUNT_FACTOR, clip_eps=CLIP_EPS, actor_rep=ACTOR_REP, critic_rep=CRITIC_REP)
 
 state, _ = env.reset()
 state = state.reshape(-1)
@@ -119,7 +119,7 @@ for t in tqdm.trange(MAX_STEPS):
     replay_buffer.push(state_tensor, action, reward, next_state_tensor, done)
 
     ### TRAINING STEP ###
-    loss_actor, loss_critic = agent.training_step(batch_size = BATCH_SIZE, replay_buffer = replay_buffer, critic_loss_function=critc_loss_function)
+    loss_actor, loss_critic = agent.training_step(batch_size = BATCH_SIZE, replay_buffer = replay_buffer, critic_loss_fcn=critc_loss_function)
     
     actor_loss_vals_history.append(loss_actor.cpu().detach())
     critic_loss_vals_history.append(loss_critic.cpu().detach())
