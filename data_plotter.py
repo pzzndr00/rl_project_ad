@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 # 'DQN'
 # 'Duelling_DQN'
 # 'PPO'
-MODEL = 'Duelling_DQN'
+MODEL = 'PPO'
 
 def moving_avg_filter(array:np.array, beta = 0.01):
 
@@ -109,11 +109,11 @@ if MODEL == 'Duelling_DQN':
 
 # PPO ############################################################
 if MODEL == 'PPO':
-    PPO_actor_loss, PPO_critic_loss, PPO_rewards = np.genfromtxt('training_data/PPO/PPO_training_data_losses_and_rewards.csv', unpack=True, delimiter=',')
+    PPO_actor_loss, PPO_critic_loss = np.genfromtxt('training_data/PPO/PPO_training_data_losses.csv', unpack=True, delimiter=',')
 
     filt_PPO_actor_loss = moving_avg_filter(PPO_actor_loss)
     filt_PPO_critic_loss = moving_avg_filter(PPO_critic_loss)
-    filt_PPO_rewards = moving_avg_filter(PPO_rewards)
+
 
     # PPO actor loss
     plt.figure('PPO actor loss')
@@ -131,13 +131,6 @@ if MODEL == 'PPO':
     plt.legend()
     plt.xlabel('Training steps')
 
-    # PPO rewards - not very useful
-    plt.figure('PPO rewards')
-    #plt.suptitle('PPO rewards')
-    plt.plot(PPO_rewards, color = 'mistyrose', label = 'raw data')
-    plt.plot(filt_PPO_rewards, color = 'red', label = 'filtered data')
-    plt.legend()
-    plt.xlabel('Training steps')
 
     PPO_returns, PPO_episodes_steps = np.genfromtxt('training_data/PPO/PPO_training_data_returns_and_episodes_steps.csv', unpack=True, delimiter=',')
 

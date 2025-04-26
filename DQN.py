@@ -128,11 +128,11 @@ class Duelling_DQN_agent(nn.Module):
 
         # advantage estimation
         x_adv = self.act(self.fc_adv(x))
-        x_adv = self.act(self.adv(x_adv))
+        x_adv = self.adv(x_adv)
 
         # value estimation
         x_val = self.act(self.fc_value(x))
-        x_val = self.act(self.value(x_val))
+        x_val = self.value(x_val)
 
         # combining the two
         match(self.adv_type):

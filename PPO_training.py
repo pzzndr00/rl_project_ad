@@ -9,28 +9,31 @@ import matplotlib.pyplot as plt
 
 # my modules
 import PPO
-import memoryBuffer as mb
 
 # Constants and parameters #####################################################
-MAX_STEPS = int(2.5e4)  # This should be enough to obtain nice results, however feel free to change it
+BUFFER_SIZE = 2048
+BATCH_SIZE = 256
+EPOCHS = 10
+
+MAX_STEPS = 24576
 
 LANES = 3
 
 STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
 
 
-DISCOUNT_FACTOR = 0.8
-LR = 1e-4 # learning rate
-CLIP_EPS = 0.2
-ACTOR_REP = 15
-CRITIC_REP = 5
+DISCOUNT_FACTOR = 0.7
 
-HIDDEN_LAYERS_SIZE = 128
+ACTOR_LR = 3e-4
+CRITIC_LR = 5e-4
+CLIP_EPS = 0.2
+ACTOR_REP = 10
+CRITIC_REP = 15
+
+
+
 
 critc_loss_function =  nn.MSELoss()  # nn.MSELoss() # nn.SmoothL1Loss() 
-
-
-BATCH_SIZE = 128
 
 # GPU? # depending on the hardware it may even be better to run everything on the cpu
 device = torch.device(
@@ -63,19 +66,19 @@ env = gymnasium.make(env_name,
                         'lanes_count': LANES,
                         'absolute': False,
                         'duration': 40, "vehicles_count": 50},
-                        # render_mode = 'human'
+                        render_mode = 'human'
                         )
 
 print('>>> ENVIRONMENT INITIALIZED')
 
 # initialization of the replay buffer
-replay_buffer = mb.memory(MAX_STEPS)
+replay_buffer = PPO.PPO_Buffer()
 print('>>> REPLAY BUFFER INITIALIZED')
 
 
 
 # Initialize your model
-agent = PPO.PPO_agent(state_size=STATE_DIMENSIONALITY, actions_set_cardinality=5, env = env, device = device, discount_factor=DISCOUNT_FACTOR, clip_eps=CLIP_EPS, actor_rep=ACTOR_REP, critic_rep=CRITIC_REP)
+agent = PPO.PPO_agent(state_size=STATE_DIMENSIONALITY, actions_set_cardinality=5, env = env, device = device, discount_factor=DISCOUNT_FACTOR, clip_eps=CLIP_EPS, actor_rep=ACTOR_REP, critic_rep=CRITIC_REP, actor_lr=ACTOR_LR, critic_lr=CRITIC_LR)
 
 state, _ = env.reset()
 state = state.reshape(-1)
@@ -90,11 +93,11 @@ episode_return = 0
 # data that is going to be collected each step
 actor_loss_vals_history = []
 critic_loss_vals_history = []
-rewards_history = []
 
 # dara that is going to be collected for each episode
 episodes_returns = []
 episodes_steps = []
+
 
 
 for t in tqdm.trange(MAX_STEPS):
@@ -104,7 +107,7 @@ for t in tqdm.trange(MAX_STEPS):
     state_tensor = torch.from_numpy(state).to(device=device)
 
     # Select the action to be performed by the agent
-    action,_ = agent.act(state_tensor=state_tensor)
+    action, action_probs = agent.act(state_tensor=state_tensor)
 
     next_state, reward, done, truncated, _ = env.step(action)
     next_state = next_state.reshape(-1)
@@ -115,17 +118,21 @@ for t in tqdm.trange(MAX_STEPS):
     state = next_state
     episode_return += reward
 
-    # Store transition in memory and train your model
-    replay_buffer.push(state_tensor, action, reward, next_state_tensor, done)
+    # Store transition in memory
+    replay_buffer.append(state_tensor=state_tensor, action=action, action_probs=action_probs[action] ,reward=reward, next_state_tensor=next_state_tensor, done=done)
 
     ### TRAINING STEP ###
-    loss_actor, loss_critic = agent.training_step(batch_size = BATCH_SIZE, replay_buffer = replay_buffer, critic_loss_fcn=critc_loss_function)
-    
-    actor_loss_vals_history.append(loss_actor.cpu().detach())
-    critic_loss_vals_history.append(loss_critic.cpu().detach())
+    if replay_buffer.get_size() >= BUFFER_SIZE:
+        
+        loss_actor_epoch_list, loss_critic_epoch_list = agent.training_step(replay_buffer = replay_buffer, batch_size = BATCH_SIZE, critic_loss_fcn=critc_loss_function, epochs=EPOCHS)
+        
+        actor_loss_vals_history.extend(loss_actor_epoch_list)
+        critic_loss_vals_history.extend(loss_critic_epoch_list)
 
-    rewards_history.append(reward)
+        # emptying the replay_buffer
+        replay_buffer.clear()
 
+    ###########################################
     if done or truncated:
         # print(f"Total T: {t} Episode Num: {episode} Episode T: {episode_steps} Return: {episode_return:.3f}")
         episodes_returns.append(episode_return)
@@ -143,10 +150,10 @@ env.close()
 
 # saving the trained model for evaluation
 torch.save(agent, 'trained_PPO_agent.pt')
-print('>>> TRAINED DQN MODEL SAVED')
+print('>>> TRAINED PPO MODEL SAVED')
 
 # saving training data
-np.savetxt('training_data/PPO/PPO_training_data_losses_and_rewards.csv', np.transpose([actor_loss_vals_history, critic_loss_vals_history, rewards_history]), header= 'actor_loss, critic_loss ,rewards',delimiter = ',')
+np.savetxt('training_data/PPO/PPO_training_data_losses.csv', np.transpose([actor_loss_vals_history, critic_loss_vals_history]), header= 'actor_loss, critic_loss' ,delimiter = ',')
 np.savetxt('training_data/PPO/PPO_training_data_returns_and_episodes_steps.csv', np.transpose([episodes_returns, episodes_steps]), header='returns,episode_length', delimiter=',')
 
 # plotting data
