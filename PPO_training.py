@@ -6,34 +6,42 @@ import torch.nn as nn
 import random
 import tqdm
 import matplotlib.pyplot as plt
+import os
 
 # my modules
 import PPO
 
 # Constants and parameters #####################################################
-BUFFER_SIZE = 2048
-BATCH_SIZE = 256
+BUFFER_SIZE = 1024 # 1024 - 2048
+BATCH_SIZE = 128 # 64 - 128 - 256
 EPOCHS = 10
 
 MAX_STEPS = 24576
-
+NUMBER_OF_TRAINING_STEPS = int(MAX_STEPS/BUFFER_SIZE)
+print(f'The algorithm will perform {NUMBER_OF_TRAINING_STEPS} training steps')
 LANES = 3
 
 STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
 
+DISCOUNT_FACTOR = 0.8
 
-DISCOUNT_FACTOR = 0.7
-
-ACTOR_LR = 3e-4
+ACTOR_LR = 2e-4
 CRITIC_LR = 5e-4
+
+# Entropy linear decay parameters
+ENTROPY_COEF_START = 0.05
+ENTROPY_COEF_END = 0
+DECAY_END_PERCENTAGE = 0.5
+entropy_coef = ENTROPY_COEF_START
+
+MAX_GRAD_NORM = 1
+
 CLIP_EPS = 0.2
-ACTOR_REP = 10
-CRITIC_REP = 15
+ACTOR_REP = 20
+CRITIC_REP = 10
 
 
-
-
-critc_loss_function =  nn.MSELoss()  # nn.MSELoss() # nn.SmoothL1Loss() 
+critc_loss_function =  nn.SmoothL1Loss()  # nn.MSELoss() # nn.SmoothL1Loss() 
 
 # GPU? # depending on the hardware it may even be better to run everything on the cpu
 device = torch.device(
@@ -72,7 +80,7 @@ env = gymnasium.make(env_name,
 print('>>> ENVIRONMENT INITIALIZED')
 
 # initialization of the replay buffer
-replay_buffer = PPO.PPO_Buffer()
+PPO_buffer = PPO.PPO_Buffer()
 print('>>> REPLAY BUFFER INITIALIZED')
 
 
@@ -98,7 +106,7 @@ critic_loss_vals_history = []
 episodes_returns = []
 episodes_steps = []
 
-
+training_steps = 0
 
 for t in tqdm.trange(MAX_STEPS):
     episode_steps += 1
@@ -115,30 +123,37 @@ for t in tqdm.trange(MAX_STEPS):
     # next state tensor
     next_state_tensor = torch.from_numpy(next_state).to(device=device)
 
-    state = next_state
-    episode_return += reward
-
     # Store transition in memory
-    replay_buffer.append(state_tensor=state_tensor, action=action, action_probs=action_probs[action] ,reward=reward, next_state_tensor=next_state_tensor, done=done)
+    PPO_buffer.append(state_tensor=state_tensor, action=action, action_probs=action_probs ,reward=reward, next_state_tensor=next_state_tensor, done=done)
+
+    state = next_state
+    episode_return += reward    
 
     ### TRAINING STEP ###
-    if replay_buffer.get_size() >= BUFFER_SIZE:
+    if PPO_buffer.get_size() >= BUFFER_SIZE:
         
-        loss_actor_epoch_list, loss_critic_epoch_list = agent.training_step(replay_buffer = replay_buffer, batch_size = BATCH_SIZE, critic_loss_fcn=critc_loss_function, epochs=EPOCHS)
+        # entropy coefficient linear decay
+        if entropy_coef > ENTROPY_COEF_END:
+            entropy_coef = ENTROPY_COEF_START + (ENTROPY_COEF_END - ENTROPY_COEF_START) * training_steps / int(NUMBER_OF_TRAINING_STEPS*DECAY_END_PERCENTAGE)
+            if entropy_coef < ENTROPY_COEF_END: entropy_coef = ENTROPY_COEF_END
+
+        print(f'entropy coefficient = {entropy_coef}')
+
+        loss_actor_epoch_list, loss_critic_epoch_list = agent.training_step(PPO_buffer = PPO_buffer, batch_size = BATCH_SIZE, critic_loss_fcn=critc_loss_function, epochs=EPOCHS, entropy_coef=entropy_coef)
         
         actor_loss_vals_history.extend(loss_actor_epoch_list)
         critic_loss_vals_history.extend(loss_critic_epoch_list)
 
-        # emptying the replay_buffer
-        replay_buffer.clear()
+        # emptying the PPO_buffer
+        PPO_buffer.clear()
+
+        training_steps += 1
 
     ###########################################
     if done or truncated:
         # print(f"Total T: {t} Episode Num: {episode} Episode T: {episode_steps} Return: {episode_return:.3f}")
         episodes_returns.append(episode_return)
         episodes_steps.append(episode_steps)
-        # Save training information and model parameters
-        
 
         state, _ = env.reset()
         state = state.reshape(-1)
@@ -153,38 +168,14 @@ torch.save(agent, 'trained_PPO_agent.pt')
 print('>>> TRAINED PPO MODEL SAVED')
 
 # saving training data
+
+if not os.path.exists('training_data/PPO'): os.makedirs('training_data/PPO')
+
 np.savetxt('training_data/PPO/PPO_training_data_losses.csv', np.transpose([actor_loss_vals_history, critic_loss_vals_history]), header= 'actor_loss, critic_loss' ,delimiter = ',')
 np.savetxt('training_data/PPO/PPO_training_data_returns_and_episodes_steps.csv', np.transpose([episodes_returns, episodes_steps]), header='returns,episode_length', delimiter=',')
 
-# plotting data
+# plotting training data
 
-
-### actor and critic losses ###
-losses_fig, (actor_loss_plot, critic_loss_plot) = plt.subplots(nrows = 1, ncols=2)
-losses_fig.suptitle('actor and critic losses')
-
-# actor loss
-actor_loss_plot.set_title('actor loss')
-actor_loss_plot.plot(actor_loss_vals_history)
-actor_loss_plot.set_xlabel('training steps')
-# critic loss
-critic_loss_plot.set_title('critic loss')
-critic_loss_plot.plot(critic_loss_vals_history)
-critic_loss_plot.set_xlabel('training steps')
-
-### returns and episode length ###
-episode_plot, (returns_plot, episode_steps_plot) = plt.subplots(nrows = 1, ncols=2)
-episode_plot.suptitle('returns and episode steps')
-# returns
-returns_plot.set_title("RETURNS")
-returns_plot.plot(episodes_returns, color='blue')
-returns_plot.set_xlabel("Episodes")
-# episode length
-episode_steps_plot.set_title('EPISODE STEPS')
-episode_steps_plot.plot(episodes_steps, color='purple')
-episode_steps_plot.set_xlabel("Episodes")
-
-plt.show()
-
+os.system('python data_plotter.py --input PPO')
 
 print('>>> PROGRAM TERMINATED')

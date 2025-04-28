@@ -12,7 +12,7 @@ import math
 import copy
 import tqdm
 import matplotlib.pyplot as plt
-
+import os
 # my modules
 import memoryBuffer as mb
 import DQN
@@ -24,14 +24,14 @@ torch.manual_seed(2119275)
 
 # Constants and parameters #####################################################
 
-MAX_STEPS = int(2.5e4)  # This should be enough to obtain nice results, however feel free to change it
+MAX_STEPS = int(2.5e4)
 
 LANES = 3
 
 STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
 
 BATCH_SIZE = 128
-LEARNING_START = 200
+LEARNING_START = 256
 
 # epsilon decay parameters
 EPS_START = 0.95
@@ -143,16 +143,9 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
     next_state = next_state.reshape(-1)
     next_state_tensor = torch.from_numpy(next_state)
     next_state_tensor = next_state_tensor.to(device=device)
-
-    # Store transition in memory and train your model
-    
+   
     # Storing trnsition in the replay buffer
     replay_buffer.push(state_tensor, action, reward, next_state_tensor, done)
-
-    # removes the oldest sample when max size has benn exceeded, this keeps of reasonable
-    # size the buffer and removes older and less relevant steps
-    # if len(replay_buffer) > BUFFER_MAX_SIZE:
-    #     replay_buffer.popleft()
 
     state = next_state
     episode_return += reward
@@ -188,7 +181,6 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
         episode_return = 0
 
 
-
 print('>>> TRAINING ENDED')
 
 # saving the trained model for evaluation
@@ -201,50 +193,15 @@ print('>>> TRAINED DQN MODEL SAVED')
 # TRAINING DATA PLOTS AND SAVING ###############################################
 
 # saving data
+if not os.path.exists('training_data/PPO'): os.makedirs('training_data/DQN')
+
 np.savetxt('training_data/DQN/DQN_training_data_loss_and_rewards.csv', np.transpose([loss_vals_history, rewards_history]), header= 'Loss,rewards',delimiter = ',')
 np.savetxt('training_data/DQN/DQN_training_data_returns_episode_length.csv', np.transpose([episode_return_history, episode_length_history]), header='returns,episode_length', delimiter=',')
 
 
-# Create a 2x2 grid of subplots
-fig, ((loss_plot, returns_plot), (rewards_plot, episode_length_plot)) = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))
+# plotting training data
 
-# Set a main title for the entire figure
-fig.suptitle('Training Data Plot', fontsize=16)
-
-# Plot LOSS
-loss_plot.set_title("LOSS")
-loss_plot.plot(loss_vals_history, color='red')
-loss_plot.set_xlabel("Episodes")
-loss_plot.set_ylabel("Loss")
-
-# Plot RETURNS
-returns_plot.set_title("RETURNS")
-returns_plot.plot(episode_return_history, color='blue')
-returns_plot.set_xlabel("Episodes")
-returns_plot.set_ylabel("Return")
-
-# Plot REWARDS
-rewards_plot.set_title("REWARDS")
-rewards_plot.plot(rewards_history, color='green')  # Consider plotting reward per step if available
-rewards_plot.set_xlabel("Episodes")
-rewards_plot.set_ylabel("Rewards")
-
-# Plot EPISODE LENGTH
-episode_length_plot.set_title('EPISODE LENGTH')
-episode_length_plot.plot(episode_length_history, color='purple')
-episode_length_plot.set_xlabel("Episodes")
-episode_length_plot.set_ylabel("Length")
-
-# Adjust layout to prevent overlap
-plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-
-eps_fig = plt.figure('Epsilon values')
-plt.plot(eps_values)
-
-# showing data
-plt.show()
-plt.close('all')
-################################################################################
+os.system('python data_plotter.py --input DQN')
 
 env.close()
 

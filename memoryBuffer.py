@@ -1,3 +1,5 @@
+# Memory buffer, used only for DQN (another implementation makes things easier for PPO)
+
 from collections import namedtuple, deque
 import random
 
@@ -27,8 +29,10 @@ class memory(object):
 
 
     def __len__(self):
+        """Returns the size of the buffer"""
         return len(self.memory)
 
     def clear(self):
+        """Empties the buffer"""
         self.memory.clear()
         return

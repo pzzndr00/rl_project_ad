@@ -1,3 +1,5 @@
+# Contains the agents definition (and what is needed for training) for both vanilla and duelling DQN
+
 import torch
 import torch.nn as nn
 import random
@@ -6,9 +8,28 @@ import numpy as np
 # my modules 
 import memoryBuffer as mb
 
+# Vanilla DQN agent class
 class DQN_agent(nn.Module):
+    """Vanilla DQN agent"""
+    
+    def __init__(self, input_size:int, output_size:int, discount_factor = 0.8, loss_function = nn.MSELoss(), lr = 5e-4,  hidden_size1:int = 128, hidden_size2:int = 128, device = 'cpu'):
+        """
+        Vanilla DQN __init__ function (2 layers Q network)
 
-    def __init__(self, input_size, output_size, discount_factor = 0.8, loss_function = nn.MSELoss(), lr = 5e-4,  hidden_size1 = 128, hidden_size2 = 128, device = 'cpu'):
+        Parameters
+        __________
+
+        input_size: (int) input size of the DQN network
+        output_size:  (int) output size of the DQN network
+        
+        discount_factor: (optional) discount factor
+        loss_function: (optional) loss function for Q-network optimization
+        lr: (optional) learning rate
+        hidden_size1: (int) (optional) first hidden layer size
+        hidden_size2: (int) (optional) second hidden layer size
+        device: (optional) pytorch device
+        """
+        
         super(DQN_agent, self).__init__()
 
         # layers
@@ -33,9 +54,19 @@ class DQN_agent(nn.Module):
         out = self.fc3(x)
         return out
 
+    def training_step(self, Q_hat, replay_buffer:mb.memory, batch_size:int = 128):
+        """
+        Training step function
 
-    def training_step(self, Q_hat, replay_buffer:mb.memory, batch_size = 128):
-        
+        Parameters
+        __________
+
+        Q_hat: Q network used for estimation of action values
+        replay_buffer: (mb.memory) replay buffer containing the gathered experience
+
+        batch_size: (int) (optional) size of the batch that will used for one training step
+
+        """
         device = self.device
 
         # batch sampling and conversion to tensors #############################
@@ -72,8 +103,21 @@ class DQN_agent(nn.Module):
 
         return loss
 
-    def act_eps_greedy(self, state_tensor, eps):
-        
+    def act_eps_greedy(self, state_tensor:torch.tensor, eps):
+        """
+        Epsilon greedy action selection used for training
+
+        Parameters
+        __________
+
+        state_tensor: (torch.tensor) row tensor containg the vectorized state tensor
+        eps: epsilon
+
+        Returns
+        _______
+        greedy action with probability 1 - eps, random action with probability eps
+
+        """
         actions_values = self(state_tensor)
 
         u = random.random()
@@ -83,18 +127,51 @@ class DQN_agent(nn.Module):
         else:
             return random.choice(range(self.output_size))
 
-        return
-
     def act_greedy(self, state_tensor):
+        """
+        Greedy action selection
+
+        Parameters
+        __________
+
+        state_tensor: (torch.tensor) row tensor containg the vectorized state tensor
+
+        Returns
+        _______
+        greedy action
+        
+        """
         actions_values = self(state_tensor)
         return torch.argmax(actions_values)
 
-class Duelling_DQN_agent(nn.Module):
 
-    def __init__(self, input_size, output_size, discount_factor = 0.8, loss_function = nn.MSELoss(), lr = 5e-4,  hidden_size1 = 128, hidden_size2 = 64, hidden_size_3 = 256, adv_type = 'mean',device = 'cpu'):
+# Duelling DQN agent class
+class Duelling_DQN_agent(nn.Module):
+    """Duelling DQN agent"""
+
+    def __init__(self, input_size:int, output_size:int, discount_factor = 0.8, loss_function = nn.MSELoss(), lr = 5e-4,  hidden_size1:int = 128, hidden_size2:int = 64, hidden_size_3:int = 256, adv_type = 'mean',device = 'cpu'):
+        """
+        Duelling DQN __init__ function
+
+        Parameters
+        __________
+
+        input_size: (int) input size of the DQN network
+        output_size:  (int) output size of the DQN network
+        
+        discount_factor: (optional) discount factor
+        loss_function: (optional) loss function for Q-network optimization
+        lr: (optional) learning rate
+        hidden_size1: (int) (optional) first hidden layer size
+        hidden_size2: (int) (optional) second hidden layer size
+        hidden_size3 :(int) (optional) third hidden layer size, two different layesrs of such size are created, one for advantages estimation and the other for state value estimation
+        adv_type: (optional) either 'mean' or 'max', defines how to combine the state values and advantages to compute the action values
+        device: (optional) pytorch device
+        
+        """
         super(Duelling_DQN_agent, self).__init__()
 
-        # layers
+        # layers definition
 
         # two fully connected layers at the beginning
         self.fc1 = nn.Linear(input_size, hidden_size1)
@@ -148,8 +225,19 @@ class Duelling_DQN_agent(nn.Module):
         
         return out
 
-
     def training_step(self, Q_hat, replay_buffer:mb.memory, batch_size = 128):
+        """
+        Training step function
+
+        Parameters
+        __________
+
+        Q_hat: Q network used for estimation of action values
+        replay_buffer: (mb.memory) replay buffer containing the gathered experience
+
+        batch_size: (int) (optional) size of the batch that will used for one training step
+
+        """
 
         device = self.device
 
@@ -188,7 +276,20 @@ class Duelling_DQN_agent(nn.Module):
         return loss
 
     def act_eps_greedy(self, state_tensor, eps):
-        
+        """
+        Epsilon greedy action selection used for training
+
+        Parameters
+        __________
+
+        state_tensor: (torch.tensor) row tensor containg the vectorized state tensor
+        eps: epsilon
+
+        Returns
+        _______
+        greedy action with probability 1 - eps, random action with probability eps
+
+        """        
         actions_values = self(state_tensor)
 
         u = random.random()
@@ -201,5 +302,19 @@ class Duelling_DQN_agent(nn.Module):
         return
         
     def act_greedy(self, state_tensor):
+        """
+        Greedy action selection
+
+        Parameters
+        __________
+
+        state_tensor: (torch.tensor) row tensor containg the vectorized state tensor
+
+        Returns
+        _______
+        greedy action
+        
+        """
+
         actions_values = self(state_tensor)
         return torch.argmax(actions_values)

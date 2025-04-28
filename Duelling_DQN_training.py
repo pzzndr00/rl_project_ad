@@ -12,6 +12,7 @@ import math
 import copy
 import tqdm
 import matplotlib.pyplot as plt
+import os
 
 # my modules
 import memoryBuffer as mb
@@ -201,50 +202,16 @@ print('>>> TRAINED DUELLING DQN MODEL SAVED')
 # TRAINING DATA PLOTS AND SAVING ###############################################
 
 # saving data
+
+if not os.path.exists('training_data/PPO'): os.makedirs('training_data/DQN')
+
 np.savetxt('training_data/DQN/Duelling_DQN_training_data_loss_and_rewards.csv', np.transpose([loss_vals_history, rewards_history]), header= 'Loss,rewards',delimiter = ',')
 np.savetxt('training_data/DQN/Duelling_DQN_training_data_returns_episode_length.csv', np.transpose([episode_return_history, episode_length_history]), header='returns,episode_length', delimiter=',')
 
 
-# Create a 2x2 grid of subplots
-fig, ((loss_plot, returns_plot), (rewards_plot, episode_length_plot)) = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))
+# plotting training data
 
-# Set a main title for the entire figure
-fig.suptitle('Training Data Plot', fontsize=16)
-
-# Plot LOSS
-loss_plot.set_title("LOSS")
-loss_plot.plot(loss_vals_history, color='red')
-loss_plot.set_xlabel("Episodes")
-loss_plot.set_ylabel("Loss")
-
-# Plot RETURNS
-returns_plot.set_title("RETURNS")
-returns_plot.plot(episode_return_history, color='blue')
-returns_plot.set_xlabel("Episodes")
-returns_plot.set_ylabel("Return")
-
-# Plot REWARDS
-rewards_plot.set_title("REWARDS")
-rewards_plot.plot(rewards_history, color='green')  # Consider plotting reward per step if available
-rewards_plot.set_xlabel("Episodes")
-rewards_plot.set_ylabel("Rewards")
-
-# Plot EPISODE LENGTH
-episode_length_plot.set_title('EPISODE LENGTH')
-episode_length_plot.plot(episode_length_history, color='purple')
-episode_length_plot.set_xlabel("Episodes")
-episode_length_plot.set_ylabel("Length")
-
-# Adjust layout to prevent overlap
-plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-
-eps_fig = plt.figure('Epsilon values')
-plt.plot(eps_values)
-
-# showing data
-plt.show()
-plt.close('all')
-################################################################################
+os.system('python data_plotter.py --input Duelling_DQN')
 
 env.close()
 

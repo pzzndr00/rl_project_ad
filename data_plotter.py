@@ -1,13 +1,47 @@
+# Given the csv files in the training_data folder plots the data gathered during training
+
+# usage: python data_plotter.py --input model_name
+# model_name alternatives: 
+#  - 'DQN'
+#  - 'Duelling_DQN'
+#  - 'PPO'
+
+# imports
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
+import sys
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument("--input", required=True, type=str)
+
+    args = parser.parse_args()
+
+    input_arg = args.input
 
 # alternatives: 
 # 'DQN'
 # 'Duelling_DQN'
 # 'PPO'
-MODEL = 'PPO'
+MODEL = input_arg
 
 def moving_avg_filter(array:np.array, beta = 0.01):
+    """
+    Function used to smooth data for better visualization, computes the moving weighted average 
+
+    Parameters
+    __________
+    
+    array: numpy array containing the data
+    beta: smoothing factor, the smaller beta the stronger the smoothing
+
+    Returns
+    _______
+
+    filt_array: numpy array containing the weighted moving average
+    """
 
     filt_array = np.zeros_like(array)
     l = array.shape[0]
@@ -29,16 +63,16 @@ if MODEL == 'DQN':
     # loss
     plt.figure('DQN loss')
     #plt.suptitle('DQN loss')
-    plt.plot(DQN_loss, color = 'mistyrose', label = 'raw data')
-    plt.plot(filt_DQN_loss, color = 'red', label = 'filtered data')
+    plt.plot(DQN_loss, color = 'lavender', label = 'raw data')
+    plt.plot(filt_DQN_loss, color = 'blue', label = 'filtered data')
     plt.legend()
     plt.xlabel('Training steps')
 
-    # rewards - not the most useful
+    # rewards
     plt.figure('DQN rewards')
     #plt.suptitle('DQN rewards')
-    plt.plot(DQN_rewards, color = 'mistyrose', label = 'raw data')
-    plt.plot(filt_DQN_rewards, color = 'red', label = 'filtered data')
+    plt.plot(DQN_rewards, color = 'lavender', label = 'raw data')
+    plt.plot(filt_DQN_rewards, color = 'blue', label = 'filtered data')
     plt.legend()
     plt.xlabel('Training steps')
 
@@ -50,16 +84,16 @@ if MODEL == 'DQN':
     # returns
     plt.figure('DQN returns')
     #plt.suptitle('DQN returns')
-    plt.plot(DQN_returns, color = 'mistyrose', label = 'raw data')
-    plt.plot(filt_DQN_returns, color = 'red', label = 'filtered data')
+    plt.plot(DQN_returns, color = 'lavender', label = 'raw data')
+    plt.plot(filt_DQN_returns, color = 'blue', label = 'filtered data')
     plt.legend()
     plt.xlabel('Episodes')
 
     # episode steps
     plt.figure('DQN episodes steps')
     #plt.suptitle('DQN episode steps')
-    plt.plot(DQN_episodes_steps, color = 'mistyrose', label = 'raw data')
-    plt.plot(filt_DQN_episodes_steps, color = 'red', label = 'filtered data')
+    plt.plot(DQN_episodes_steps, color = 'lavender', label = 'raw data')
+    plt.plot(filt_DQN_episodes_steps, color = 'blue', label = 'filtered data')
     plt.legend()
     plt.xlabel('Episodes')
 
@@ -73,16 +107,16 @@ if MODEL == 'Duelling_DQN':
     # loss
     plt.figure('Duelling_DQN loss')
     #plt.suptitle('DQN loss')
-    plt.plot(Duelling_DQN_loss, color = 'mistyrose', label = 'raw data')
-    plt.plot(filt_Duelling_DQN_loss, color = 'red', label = 'filtered data')
+    plt.plot(Duelling_DQN_loss, color = 'lavender', label = 'raw data')
+    plt.plot(filt_Duelling_DQN_loss, color = 'blue', label = 'filtered data')
     plt.legend()
     plt.xlabel('Training steps')
 
     # rewards - not the most useful
     plt.figure('Duelling_DQN rewards')
     #plt.suptitle('DQN rewards')
-    plt.plot(Duelling_DQN_rewards, color = 'mistyrose', label = 'raw data')
-    plt.plot(filt_Duelling_DQN_rewards, color = 'red', label = 'filtered data')
+    plt.plot(Duelling_DQN_rewards, color = 'lavender', label = 'raw data')
+    plt.plot(filt_Duelling_DQN_rewards, color = 'blue', label = 'filtered data')
     plt.legend()
     plt.xlabel('Training steps')
 
@@ -94,16 +128,16 @@ if MODEL == 'Duelling_DQN':
     # returns
     plt.figure('Duelling_DQN returns')
     #plt.suptitle('DQN returns')
-    plt.plot(Duelling_DQN_returns, color = 'mistyrose', label = 'raw data')
-    plt.plot(filt_Duelling_DQN_returns, color = 'red', label = 'filtered data')
+    plt.plot(Duelling_DQN_returns, color = 'lavender', label = 'raw data')
+    plt.plot(filt_Duelling_DQN_returns, color = 'blue', label = 'filtered data')
     plt.legend()
     plt.xlabel('Episodes')
 
     # episode steps
     plt.figure('Duelling_DQN episodes steps')
     #plt.suptitle('DQN episode steps')
-    plt.plot(Duelling_DQN_episodes_steps, color = 'mistyrose', label = 'raw data')
-    plt.plot(filt_Duelling_DQN_episodes_steps, color = 'red', label = 'filtered data')
+    plt.plot(Duelling_DQN_episodes_steps, color = 'lavender', label = 'raw data')
+    plt.plot(filt_Duelling_DQN_episodes_steps, color = 'blue', label = 'filtered data')
     plt.legend()
     plt.xlabel('Episodes')
 
@@ -111,23 +145,23 @@ if MODEL == 'Duelling_DQN':
 if MODEL == 'PPO':
     PPO_actor_loss, PPO_critic_loss = np.genfromtxt('training_data/PPO/PPO_training_data_losses.csv', unpack=True, delimiter=',')
 
-    filt_PPO_actor_loss = moving_avg_filter(PPO_actor_loss)
-    filt_PPO_critic_loss = moving_avg_filter(PPO_critic_loss)
+    filt_PPO_actor_loss = moving_avg_filter(PPO_actor_loss, 0.025)
+    filt_PPO_critic_loss = moving_avg_filter(PPO_critic_loss, 0.025)
 
 
     # PPO actor loss
     plt.figure('PPO actor loss')
     #plt.suptitle('PPO actor loss')
-    plt.plot(PPO_actor_loss, color = 'mistyrose', label = 'raw data')
-    plt.plot(filt_PPO_actor_loss, color = 'red', label = 'filtered data')
+    plt.plot(PPO_actor_loss, color = 'lavender', label = 'raw data')
+    plt.plot(filt_PPO_actor_loss, color = 'blue', label = 'filtered data')
     plt.legend()
     plt.xlabel('Training steps')
 
     # PPO critic loss
     plt.figure('PPO critic loss')
     #plt.suptitle('PPO critic loss')
-    plt.plot(PPO_critic_loss, color = 'mistyrose', label = 'raw data')
-    plt.plot(filt_PPO_critic_loss, color = 'red', label = 'filtered data')
+    plt.plot(PPO_critic_loss, color = 'lavender', label = 'raw data')
+    plt.plot(filt_PPO_critic_loss, color = 'blue', label = 'filtered data')
     plt.legend()
     plt.xlabel('Training steps')
 
@@ -140,16 +174,16 @@ if MODEL == 'PPO':
     # returns
     plt.figure('PPO returns')
     #plt.suptitle('PPO returns')
-    plt.plot(PPO_returns, color = 'mistyrose', label = 'raw data')
-    plt.plot(filt_PPO_returns, color = 'red', label = 'filtered data')
+    plt.plot(PPO_returns, color = 'lavender', label = 'raw data')
+    plt.plot(filt_PPO_returns, color = 'blue', label = 'filtered data')
     plt.legend()
     plt.xlabel('Episodes')
 
     # episode steps
     plt.figure('PPO episodes steps')
     #plt.suptitle('PPO episode steps')
-    plt.plot(PPO_episodes_steps, color = 'mistyrose', label = 'raw data')
-    plt.plot(filt_PPO_episodes_steps, color = 'red', label = 'filtered data')
+    plt.plot(PPO_episodes_steps, color = 'lavender', label = 'raw data')
+    plt.plot(filt_PPO_episodes_steps, color = 'blue', label = 'filtered data')
     plt.legend()
     plt.xlabel('Episodes')
 
