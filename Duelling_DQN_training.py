@@ -19,9 +19,9 @@ import memoryBuffer as mb
 import DQN
 
 # Set the seed and create the environment
-np.random.seed(2119275)
-random.seed(2119275)
-torch.manual_seed(2119275)
+np.random.seed(0)
+random.seed(0)
+torch.manual_seed(0)
 
 # Constants and parameters #####################################################
 
@@ -32,7 +32,7 @@ LANES = 3
 STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
 
 BATCH_SIZE = 128
-LEARNING_START = 200
+LEARNING_START = 256
 
 # epsilon decay parameters
 EPS_START = 0.95
@@ -193,7 +193,9 @@ for t in tqdm.tqdm(range(MAX_STEPS)):
 print('>>> TRAINING ENDED')
 
 # saving the trained model for evaluation
-torch.save(agent, 'trained_Duelling_DQN_agent.pt')
+if not os.path.exists('trained_models_weights'): os.makedirs('trained_models_weights')
+torch.save(agent.state_dict(), 'trained_models_weights/trained_Duelling_DQN_agent.pt')
+
 print('>>> TRAINED DUELLING DQN MODEL SAVED')
 
 

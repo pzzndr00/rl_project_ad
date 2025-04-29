@@ -12,36 +12,36 @@ import os
 import PPO
 
 # Constants and parameters #####################################################
-BUFFER_SIZE = 1024 # 1024 - 2048
+BUFFER_SIZE = 2048 # 1024 - 2048 # must be a multiple of BATCH_SIZE
 BATCH_SIZE = 128 # 64 - 128 - 256
 EPOCHS = 10
 
-MAX_STEPS = 24576
+MAX_STEPS = 24576 # better if a multiple of BUFFER_SIZE, extra samples will be thrown away
 NUMBER_OF_TRAINING_STEPS = int(MAX_STEPS/BUFFER_SIZE)
 print(f'The algorithm will perform {NUMBER_OF_TRAINING_STEPS} training steps')
 LANES = 3
 
 STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
 
-DISCOUNT_FACTOR = 0.8
+DISCOUNT_FACTOR = 0.95
 
-ACTOR_LR = 2e-4
-CRITIC_LR = 5e-4
+ACTOR_LR = 3e-4
+CRITIC_LR = 1e-3
 
 # Entropy linear decay parameters
 ENTROPY_COEF_START = 0.05
-ENTROPY_COEF_END = 0
+ENTROPY_COEF_END = 0.001
 DECAY_END_PERCENTAGE = 0.5
-entropy_coef = ENTROPY_COEF_START
+entropy_coef = 0.01
 
-MAX_GRAD_NORM = 1
 
 CLIP_EPS = 0.2
 ACTOR_REP = 20
-CRITIC_REP = 10
+CRITIC_REP = 20
 
+CLIP_GRAD = False
 
-critc_loss_function =  nn.SmoothL1Loss()  # nn.MSELoss() # nn.SmoothL1Loss() 
+critc_loss_function =  nn.MSELoss()  # nn.MSELoss() # nn.SmoothL1Loss() 
 
 # GPU? # depending on the hardware it may even be better to run everything on the cpu
 device = torch.device(
@@ -54,9 +54,9 @@ print(f'>>> DEVICE =  {device}')
 
 
 # Set the seed and create the environment
-np.random.seed(2119275)
-random.seed(2119275)
-torch.manual_seed(2119275)
+np.random.seed(0)
+random.seed(0)
+torch.manual_seed(0)
 
 
 env_name = "highway-fast-v0"  # We use the 'fast' env just for faster training, if you want you can use "highway-v0"
@@ -76,6 +76,7 @@ env = gymnasium.make(env_name,
                         'duration': 40, "vehicles_count": 50},
                         render_mode = 'human'
                         )
+# env.unwrapped.config["collision_reward"] = -0.5
 
 print('>>> ENVIRONMENT INITIALIZED')
 
@@ -86,7 +87,7 @@ print('>>> REPLAY BUFFER INITIALIZED')
 
 
 # Initialize your model
-agent = PPO.PPO_agent(state_size=STATE_DIMENSIONALITY, actions_set_cardinality=5, env = env, device = device, discount_factor=DISCOUNT_FACTOR, clip_eps=CLIP_EPS, actor_rep=ACTOR_REP, critic_rep=CRITIC_REP, actor_lr=ACTOR_LR, critic_lr=CRITIC_LR)
+agent = PPO.PPO_agent(state_size=STATE_DIMENSIONALITY, actions_set_cardinality=5, device = device, discount_factor=DISCOUNT_FACTOR, clip_eps=CLIP_EPS, actor_rep=ACTOR_REP, critic_rep=CRITIC_REP, actor_lr=ACTOR_LR, critic_lr=CRITIC_LR)
 
 state, _ = env.reset()
 state = state.reshape(-1)
@@ -137,9 +138,9 @@ for t in tqdm.trange(MAX_STEPS):
             entropy_coef = ENTROPY_COEF_START + (ENTROPY_COEF_END - ENTROPY_COEF_START) * training_steps / int(NUMBER_OF_TRAINING_STEPS*DECAY_END_PERCENTAGE)
             if entropy_coef < ENTROPY_COEF_END: entropy_coef = ENTROPY_COEF_END
 
-        print(f'entropy coefficient = {entropy_coef}')
+        # print(f'entropy coefficient = {entropy_coef}')
 
-        loss_actor_epoch_list, loss_critic_epoch_list = agent.training_step(PPO_buffer = PPO_buffer, batch_size = BATCH_SIZE, critic_loss_fcn=critc_loss_function, epochs=EPOCHS, entropy_coef=entropy_coef)
+        loss_actor_epoch_list, loss_critic_epoch_list = agent.training_step(PPO_buffer = PPO_buffer, batch_size = BATCH_SIZE, critic_loss_fcn=critc_loss_function, epochs=EPOCHS, entropy_coef=entropy_coef, clip_gradients=CLIP_GRAD)
         
         actor_loss_vals_history.extend(loss_actor_epoch_list)
         critic_loss_vals_history.extend(loss_critic_epoch_list)
@@ -164,7 +165,8 @@ for t in tqdm.trange(MAX_STEPS):
 env.close()
 
 # saving the trained model for evaluation
-torch.save(agent, 'trained_PPO_agent.pt')
+if not os.path.exists('trained_models_weights'): os.makedirs('trained_models_weights')
+torch.save(agent.state_dict(), 'trained_models_weights/trained_PPO_agent.pt')
 print('>>> TRAINED PPO MODEL SAVED')
 
 # saving training data

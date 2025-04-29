@@ -16,9 +16,9 @@ import PPO
 AGENT_TO_BE_TESTED = 'PPO'
 
 # Set the seed and create the environment
-np.random.seed(2119275)
-random.seed(2119275)
-torch.manual_seed(2119275)
+np.random.seed(0)
+random.seed(0)
+torch.manual_seed(0)
 
 # GPU? # depending on the hardware it may even be better to run everything on the cpu
 device = torch.device(
@@ -53,14 +53,16 @@ match(AGENT_TO_BE_TESTED):
     case 'DQN':
         print('>>> DQN model test')
         # model initialization
-        DQN_agent = torch.load('trained_DQN_agent.pt', weights_only = False) # weights_only true?
+        DQN_agent = DQN.DQN_agent(input_size=25, output_size=5)
+        DQN_agent.load_state_dict(torch.load('trained_models_weights/trained_DQN_agent.pt', weights_only = True) )
         DQN_agent.to(device=device)
         DQN_agent.eval()
 
     case 'Duelling_DQN':
         print('>>> DQN model test')
         # model initialization
-        Duelling_DQN_agent = torch.load('trained_Duelling_DQN_agent.pt', weights_only = False) 
+        Duelling_DQN_agent = DQN.Duelling_DQN_agent(input_size=25, output_size=5)
+        Duelling_DQN_agent.load_state_dict(torch.load('trained_models_weights/trained_Duelling_DQN_agent.pt', weights_only = True)) 
         Duelling_DQN_agent.to(device=device)
         Duelling_DQN_agent.eval()
 
@@ -68,7 +70,8 @@ match(AGENT_TO_BE_TESTED):
     case 'PPO':
         print('>>> PPO model test')
         # model initialization
-        PPO_agent = torch.load('trained_PPO_agent.pt', weights_only = False)
+        PPO_agent = PPO.PPO_agent(state_size=25, actions_set_cardinality=5)
+        PPO_agent.load_state_dict(torch.load('trained_models_weights/trained_PPO_agent.pt', weights_only = True))
         PPO_agent.to(device=device)
         PPO_agent.eval()
 

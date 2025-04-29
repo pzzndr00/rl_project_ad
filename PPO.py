@@ -39,7 +39,7 @@ class PPO_Buffer():
         
 
 class PPO_actor(nn.Module):
-    def __init__(self, input_size, output_size, hidden_size1 = 256, hidden_size2 = 64):
+    def __init__(self, input_size, output_size, hidden_size1 = 128, hidden_size2 = 128):
         super(PPO_actor, self).__init__()
 
         self.fc1 = nn.Linear(in_features=input_size, out_features=hidden_size1) # first hidden layer
@@ -99,7 +99,7 @@ class clip_loss(nn.Module):
 
 class PPO_agent(nn.Module):
 
-    def __init__(self, state_size, actions_set_cardinality, env, discount_factor = 0.8, clip_eps = 0.2, actor_lr = 2.5e-4, critic_lr = 1e-3, actor_rep = 15, critic_rep= 5, device = torch.device('cpu')):
+    def __init__(self, state_size, actions_set_cardinality, discount_factor = 0.8, clip_eps = 0.2, actor_lr = 3e-4, critic_lr = 1e-3, actor_rep = 15, critic_rep= 5, device = torch.device('cpu')):
         super(PPO_agent, self).__init__()
 
         self.device = device
@@ -125,9 +125,9 @@ class PPO_agent(nn.Module):
     def forward(self, x):
         return self.actor(x), self.critic(x)
 
-    def training_step(self, PPO_buffer:PPO_Buffer, batch_size = 128, critic_loss_fcn = nn.MSELoss(), epochs = 10, entropy_coef = 0, critic_max_grad_norm = 1, actor_max_grad_norm = 10, gae_lambda_smoothing = 0.95):
+    def training_step(self, PPO_buffer:PPO_Buffer, batch_size:int = 128, critic_loss_fcn = nn.MSELoss(), epochs:int = 10, entropy_coef = 0, critic_max_grad_norm = 10, actor_max_grad_norm = 10, gae_lambda_smoothing = 0.95, clip_gradients:bool = True, normalize_advantages:bool = True):
         """
-        Does one epoch of training
+        
         """
 
         # data extraction and conversion to  ###################################
@@ -164,8 +164,9 @@ class PPO_agent(nn.Module):
             advantages[t] = td_error[t] + self.discount_factor * gae_lambda_smoothing * (mask_tensor[t]) * next_adv
             next_adv = advantages[t]
         
-        advantages = advantages / (advantages.std() + 1e-8) # normalization
-        advantages = advantages.detach()
+        if normalize_advantages:
+            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8) # normalization
+            advantages = advantages.detach()
         
         # for each epoch
         loss_actor_list, loss_critic_list = [], []
@@ -202,7 +203,8 @@ class PPO_agent(nn.Module):
 
                     self.actor_opt.zero_grad()
                     loss_actor.backward()
-                    torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=actor_max_grad_norm)
+                    if clip_gradients:
+                        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=actor_max_grad_norm)
                     self.actor_opt.step()
                     
 
@@ -217,7 +219,8 @@ class PPO_agent(nn.Module):
                     
                     self.critic.zero_grad()
                     loss_critic.backward()
-                    torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=critic_max_grad_norm)
+                    if clip_gradients:
+                        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=critic_max_grad_norm)
                     self.critic_opt.step()
 
             loss_actor_list.append(loss_actor.detach().cpu())
@@ -240,8 +243,7 @@ class PPO_agent(nn.Module):
 
         """
 
-        with torch.no_grad():
-            pi_given_s = self.actor(state_tensor)
+        pi_given_s = self.actor(state_tensor)
 
         # action = random.choices( np.arange(stop = pi_given_s.shape[0]) , weights=pi_given_s.cpu().detach().numpy(), k = 1)[0]
         dist = torch.distributions.Categorical(probs=pi_given_s)

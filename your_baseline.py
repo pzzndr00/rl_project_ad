@@ -159,7 +159,7 @@ def baseline_agent(env, obs, lanes_count):
     return actions['IDLE']
 
 
-def cheat_baseline():
+def lazy_baseline():
     """
     Cheating baseline for highway_env (either "highway-v0" or "highway-fast-v0"), always returns 4 that corresponds to the action 'SLOWER'
     Even if is very simple it 'breakes' the game because it never really happens to find a car approaching from behind causing a collision
@@ -171,15 +171,14 @@ def cheat_baseline():
 
 
 # Set the seed and create the environment
-np.random.seed(2119275)
-random.seed(2119275)
-torch.manual_seed(2119275)
+np.random.seed(0)
+random.seed(0)
+torch.manual_seed(0)
 
-MAX_STEPS = int(2e4)  # This should be enough to obtain nice results, however feel free to change it
-env_name = "highway-fast-v0"  #"highway-v0" #"highway-fast-v0"  # We use the 'fast' env just for faster training, if you want you can use "highway-v0"
+env_name = "highway-v0"  #"highway-v0" #"highway-fast-v0"  # We use the 'fast' env just for faster training, if you want you can use "highway-v0"
 
 LANES = 3
-EPISODES = 100
+EPISODES = 10
 
 env = gymnasium.make(env_name,
                      config={
@@ -213,6 +212,10 @@ while episode <= EPISODES:
 
     # baseline action selection
     action = baseline_agent(env = env, obs = obs, lanes_count = LANES)
+
+    # lazy baseline
+    # action = lazy_baseline()
+
 
     # step
     obs, reward, done, truncated, info = env.step(action)
