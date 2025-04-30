@@ -13,7 +13,7 @@ import PPO
 # 'DQN'
 # 'Duelling_DQN'
 # 'PPO'
-AGENT_TO_BE_TESTED = 'PPO'
+AGENT_TO_BE_TESTED = 'DQN'
 
 # Set the seed and create the environment
 np.random.seed(0)
@@ -29,7 +29,7 @@ device = torch.device(
 
 print(f'>>> DEVICE =  {device}')
 
-env_name = "highway-v0" #"highway-fast-v0" #"highway-v0"
+env_name = "highway-fast-v0" #"highway-fast-v0" #"highway-v0"
 LANES = 3
 env = gymnasium.make(env_name,
                      config={
@@ -92,7 +92,7 @@ episode = 1
 episode_steps = 0
 episode_return = 0
 
-EPISODES = 10
+EPISODES = 100
 
 while episode <= EPISODES:
     episode_steps += 1

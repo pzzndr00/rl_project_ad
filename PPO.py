@@ -3,22 +3,20 @@ import torch.nn as nn
 import random
 import numpy as np
 
-# my modules
-
 class PPO_Buffer():
     def __init__(self):
 
         self.state_tensors_list = []
         self.action_list = []
-        self.action_probs_list = []
+        self.action_log_probs_list = []
         self.rewards_list = []
         self.next_state_tensors_list = []
         self.done_list = []
     
-    def append(self, state_tensor, action, action_probs, reward, next_state_tensor, done):
+    def append(self, state_tensor, action, action_log_prob, reward, next_state_tensor, done):
         self.state_tensors_list.append(state_tensor)
         self.action_list.append(action)
-        self.action_probs_list.append(action_probs)
+        self.action_log_probs_list.append(action_log_prob)
         self.rewards_list.append(reward)
         self.next_state_tensors_list.append(next_state_tensor)
         self.done_list.append(done)
@@ -32,7 +30,7 @@ class PPO_Buffer():
     def clear(self):
         self.state_tensors_list.clear()
         self.action_list.clear()
-        self.action_probs_list.clear()
+        self.action_log_probs_list.clear()
         self.rewards_list.clear()
         self.next_state_tensors_list.clear()
         self.done_list.clear()
@@ -59,6 +57,7 @@ class PPO_actor(nn.Module):
         out = self.out_act(self.fc3(x)) # softmax output activation
         return out
 
+
 class PPO_critic(nn.Module):
     def __init__(self, input_size, hidden_size1 = 128, hidden_size2 = 128):
         super(PPO_critic, self).__init__()
@@ -80,23 +79,6 @@ class PPO_critic(nn.Module):
         return out
 
 
-class clip_loss(nn.Module):
-
-    def __init__(self):
-        super(clip_loss, self).__init__()
-
-    def forward(self, td_error, importance_sampling_ratio, clip_eps):
-
-        loss_actor = torch.minimum(
-                td_error * importance_sampling_ratio, 
-                td_error * torch.clip(importance_sampling_ratio, min = 1-clip_eps, max = 1+clip_eps)
-                )
-
-        loss_actor = -torch.mean(loss_actor)
-
-        return loss_actor
-
-
 class PPO_agent(nn.Module):
 
     def __init__(self, state_size, actions_set_cardinality, discount_factor = 0.8, clip_eps = 0.2, actor_lr = 3e-4, critic_lr = 1e-3, actor_rep = 15, critic_rep= 5, device = torch.device('cpu')):
@@ -110,7 +92,6 @@ class PPO_agent(nn.Module):
 
         self.actor = PPO_actor(input_size=state_size, output_size = actions_set_cardinality) # actor model
         self.actor.to(self.device)
-        self.actor_loss_fcn = clip_loss()
 
         self.critic = PPO_critic(input_size=state_size)  # critic model
         self.critic.to(self.device)
@@ -125,7 +106,7 @@ class PPO_agent(nn.Module):
     def forward(self, x):
         return self.actor(x), self.critic(x)
 
-    def training_step(self, PPO_buffer:PPO_Buffer, batch_size:int = 128, critic_loss_fcn = nn.MSELoss(), epochs:int = 10, entropy_coef = 0, critic_max_grad_norm = 10, actor_max_grad_norm = 10, gae_lambda_smoothing = 0.95, clip_gradients:bool = True, normalize_advantages:bool = True):
+    def training_step(self, PPO_buffer:PPO_Buffer, batch_size:int = 128, critic_loss_fcn = nn.MSELoss(), epochs:int = 10, entropy_coef = 0, critic_max_grad_norm = 1, actor_max_grad_norm = 10, gae_lambda_smoothing = 0.95, clip_gradients:bool = True, normalize_advantages:bool = True):
         """
         
         """
@@ -143,7 +124,7 @@ class PPO_agent(nn.Module):
         action_buffer = np.array(PPO_buffer.action_list) # row vector containing the selected action for every sampled transition
         reward_buffer_tensor = torch.tensor(PPO_buffer.rewards_list, requires_grad=False).to(device=self.device).to(torch.float) # row vector
         next_state_buffer_tensor = torch.stack(PPO_buffer.next_state_tensors_list, dim=0).to(device=self.device).to(torch.float) # for each row a step  
-        action_probs_buffer_tensor = torch.stack(PPO_buffer.action_probs_list, dim=0).to(device=self.device).to(torch.float).detach()
+        action_log_probs_buffer_tensor = torch.stack(PPO_buffer.action_log_probs_list, dim=0).to(device=self.device).to(torch.float).detach()
         done_buffer_tensor = torch.tensor(PPO_buffer.done_list).to(device=self.device) # row vector of zeros and ones 
         done_int_buffer_tensor = done_buffer_tensor.to(torch.int)
         mask_tensor = 1 - done_int_buffer_tensor
@@ -182,13 +163,15 @@ class PPO_agent(nn.Module):
 
                 state_batch_tensor = state_buffer_tensor[indices]
                 action_batch = action_buffer[indices]
-                action_probs_batch_tensor = action_probs_buffer_tensor[indices] # pi_old(at|st)
+                action_log_probs_batch_tensor = action_log_probs_buffer_tensor[indices] # log(pi_old(at|st))
 
                 for _ in range(self.actor_rep):
 
                     action_probs_ac = self.actor(state_batch_tensor)
 
-                    importance_sampling_ratio = action_probs_ac[[np.arange(batch_size), action_batch]] / action_probs_batch_tensor[[np.arange(batch_size), action_batch]]
+                    action_log_probs_ac = torch.log(action_probs_ac)
+
+                    importance_sampling_ratio = torch.exp(action_log_probs_ac[[np.arange(batch_size), action_batch]] - action_log_probs_batch_tensor)
 
                     loss_actor = -torch.mean(   torch.min(
                                                     advantages[indices] * importance_sampling_ratio, 
@@ -205,17 +188,17 @@ class PPO_agent(nn.Module):
                     loss_actor.backward()
                     if clip_gradients:
                         torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=actor_max_grad_norm)
+                    
                     self.actor_opt.step()
                     
 
                 # critic parameters update
+                returns_batch = rewards_to_go[indices].detach()
                 for _ in range(self.critic_rep):
 
                     new_states_batch_vals_cr = self.critic(state_batch_tensor).reshape(-1) # column vector to row vector
                     
-                    returns_batch = advantages[indices] + states_vals_cr[indices]
-
-                    loss_critic = critic_loss_fcn(new_states_batch_vals_cr, reward_buffer_tensor[indices])
+                    loss_critic = critic_loss_fcn(new_states_batch_vals_cr, returns_batch)
                     
                     self.critic.zero_grad()
                     loss_critic.backward()
@@ -239,7 +222,7 @@ class PPO_agent(nn.Module):
         RETURNS
         -------
         action: the selected action
-        pi_given_s: the output of the ctitic (pyTorch tensor) given the current state 
+        log_prob: log probability of the action, log probabilities are preferred to raw probabilities for numerical stability
 
         """
 
@@ -247,12 +230,7 @@ class PPO_agent(nn.Module):
 
         # action = random.choices( np.arange(stop = pi_given_s.shape[0]) , weights=pi_given_s.cpu().detach().numpy(), k = 1)[0]
         dist = torch.distributions.Categorical(probs=pi_given_s)
-        action = dist.sample().cpu().detach().numpy()
+        action = dist.sample()
+        log_prob = dist.log_prob(action)
 
-        return action, pi_given_s
-
-    
-
-        
-            
-
+        return action.item(), log_prob

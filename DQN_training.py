@@ -24,7 +24,7 @@ torch.manual_seed(0)
 
 # Constants and parameters #####################################################
 
-MAX_STEPS = 10# int(2.5e4)
+MAX_STEPS = int(2.5e4)
 
 LANES = 3
 
@@ -38,7 +38,7 @@ EPS_START = 0.95
 EPS_END = 0.05
 EPS_DECAY = MAX_STEPS/20
 
-DISCOUNT_FACTOR = 0.775 # better results when 0.7 - 0.8 rather than > 0.8
+DISCOUNT_FACTOR = 0.85 # better results when 0.7 - 0.8 rather than > 0.8
 LR = 5e-4 # learning rate
 C = 10 # number of step from a copy of the weights of DQN onto Q_hat to the next
 
@@ -75,9 +75,9 @@ env = gymnasium.make(env_name,
                         'lanes_count': LANES,
                         'absolute': False,
                         'duration': 40, "vehicles_count": 50},
-                        # render_mode = 'human'
+                        render_mode = 'human'
                         )
-
+env.unwrapped.config['high_speed_reward'] = 0.7
 print('>>> ENVIRONMENT INITIALIZED')
 
 # Initialize your model

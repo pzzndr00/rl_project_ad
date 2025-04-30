@@ -221,7 +221,7 @@ class Duelling_DQN_agent(nn.Module):
                 out = x_val + x_adv - torch.max(x_adv, dim = -1, keepdim = True)
 
             case _:
-                raise Exception('forward error, adv_type can be only \'mean\' or \'max\'')
+                raise ValueError(f"Invalid adv_type: '{self.adv_type}'. Use 'mean' or 'max'.")
         
         return out
 

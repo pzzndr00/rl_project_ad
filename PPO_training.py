@@ -23,23 +23,26 @@ LANES = 3
 
 STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
 
-DISCOUNT_FACTOR = 0.95
+DISCOUNT_FACTOR = 0.7
 
-ACTOR_LR = 3e-4
-CRITIC_LR = 1e-3
+ACTOR_LR = 2e-4
+CRITIC_LR = 5e-4
 
 # Entropy linear decay parameters
+LIN_DEC = False
+
 ENTROPY_COEF_START = 0.05
-ENTROPY_COEF_END = 0.001
+ENTROPY_COEF_END = 0
 DECAY_END_PERCENTAGE = 0.5
+
 entropy_coef = 0.01
 
 
 CLIP_EPS = 0.2
 ACTOR_REP = 20
-CRITIC_REP = 20
+CRITIC_REP = 10
 
-CLIP_GRAD = False
+CLIP_GRAD = True
 
 critc_loss_function =  nn.MSELoss()  # nn.MSELoss() # nn.SmoothL1Loss() 
 
@@ -76,7 +79,9 @@ env = gymnasium.make(env_name,
                         'duration': 40, "vehicles_count": 50},
                         render_mode = 'human'
                         )
-# env.unwrapped.config["collision_reward"] = -0.5
+
+env.unwrapped.config['high_speed_reward'] = 0.7
+
 
 print('>>> ENVIRONMENT INITIALIZED')
 
@@ -116,7 +121,7 @@ for t in tqdm.trange(MAX_STEPS):
     state_tensor = torch.from_numpy(state).to(device=device)
 
     # Select the action to be performed by the agent
-    action, action_probs = agent.act(state_tensor=state_tensor)
+    action, action_log_prob = agent.act(state_tensor=state_tensor)
 
     next_state, reward, done, truncated, _ = env.step(action)
     next_state = next_state.reshape(-1)
@@ -125,7 +130,7 @@ for t in tqdm.trange(MAX_STEPS):
     next_state_tensor = torch.from_numpy(next_state).to(device=device)
 
     # Store transition in memory
-    PPO_buffer.append(state_tensor=state_tensor, action=action, action_probs=action_probs ,reward=reward, next_state_tensor=next_state_tensor, done=done)
+    PPO_buffer.append(state_tensor=state_tensor, action=action, action_log_prob=action_log_prob ,reward=reward, next_state_tensor=next_state_tensor, done=done)
 
     state = next_state
     episode_return += reward    
@@ -134,9 +139,10 @@ for t in tqdm.trange(MAX_STEPS):
     if PPO_buffer.get_size() >= BUFFER_SIZE:
         
         # entropy coefficient linear decay
-        if entropy_coef > ENTROPY_COEF_END:
-            entropy_coef = ENTROPY_COEF_START + (ENTROPY_COEF_END - ENTROPY_COEF_START) * training_steps / int(NUMBER_OF_TRAINING_STEPS*DECAY_END_PERCENTAGE)
-            if entropy_coef < ENTROPY_COEF_END: entropy_coef = ENTROPY_COEF_END
+        if LIN_DEC:
+            if entropy_coef > ENTROPY_COEF_END:
+                entropy_coef = ENTROPY_COEF_START + (ENTROPY_COEF_END - ENTROPY_COEF_START) * training_steps / int(NUMBER_OF_TRAINING_STEPS*DECAY_END_PERCENTAGE)
+                if entropy_coef < ENTROPY_COEF_END: entropy_coef = ENTROPY_COEF_END
 
         # print(f'entropy coefficient = {entropy_coef}')
 
