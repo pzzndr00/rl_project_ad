@@ -206,6 +206,7 @@ class PPO_agent(nn.Module):
 
                     importance_sampling_ratio = torch.exp(action_log_probs_ac[[np.arange(batch_size), action_batch]] - action_log_probs_batch_tensor)
 
+                    raise NotImplementedError
                     loss_actor = -torch.mean(   torch.min(
                                                     advantages[indices] * importance_sampling_ratio, 
                                                     advantages[indices] * torch.clip(importance_sampling_ratio, min = 1-self.clip_eps, max = 1+self.clip_eps)

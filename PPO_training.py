@@ -14,7 +14,7 @@ import PPO
 # Constants and parameters #####################################################
 BUFFER_SIZE = 2048 # 1024 - 2048 # must be a multiple of BATCH_SIZE
 BATCH_SIZE = 256 # 64 - 128 - 256
-EPOCHS = 5
+EPOCHS = 10
 
 MAX_STEPS = 24576 # better if a multiple of BUFFER_SIZE, extra samples will be thrown away
 NUMBER_OF_TRAINING_STEPS = int(MAX_STEPS/BUFFER_SIZE)
@@ -23,7 +23,7 @@ LANES = 3
 
 STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
 
-DISCOUNT_FACTOR = 0.95
+DISCOUNT_FACTOR = 0.85
 
 ACTOR_LR = 2e-4
 CRITIC_LR = 5e-4
@@ -32,14 +32,14 @@ CRITIC_LR = 5e-4
 LIN_DEC = True
 
 ENTROPY_COEF_START = 0.05
-ENTROPY_COEF_END = 0
+ENTROPY_COEF_END = 0.01
 DECAY_END_PERCENTAGE = 0.5 # indicates at which portion of training the entropy coefficient gets to its final value
 
 entropy_coef = 0 # 0.01 # 0 = no entropy, standard clip loss # (if LIN_DEC = True entropy_coef is computed following the linear decay and this value is ignored)
 
-CLIP_EPS = 0.2
-ACTOR_REP = 25
-CRITIC_REP = 15
+CLIP_EPS = 0.1
+ACTOR_REP = 15
+CRITIC_REP = 5
 
 CLIP_GRAD = False
 
