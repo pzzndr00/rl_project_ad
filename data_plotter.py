@@ -23,7 +23,6 @@ if __name__ == "__main__":
 
 # alternatives: 
 # 'DQN'
-# 'Duelling_DQN'
 # 'PPO'
 MODEL = input_arg
 
@@ -97,53 +96,10 @@ if MODEL == 'DQN':
     plt.legend()
     plt.xlabel('Episodes')
 
-# Duelling DQN
-if MODEL == 'Duelling_DQN':
-    Duelling_DQN_loss, Duelling_DQN_rewards = np.genfromtxt('training_data/DQN/Duelling_DQN_training_data_loss_and_rewards.csv', unpack=True, delimiter=',')
-
-    filt_Duelling_DQN_loss = moving_avg_filter(Duelling_DQN_loss)
-    filt_Duelling_DQN_rewards = moving_avg_filter(Duelling_DQN_rewards)
-
-    # loss
-    plt.figure('Duelling_DQN loss')
-    #plt.suptitle('DQN loss')
-    plt.plot(Duelling_DQN_loss, color = 'lavender', label = 'raw data')
-    plt.plot(filt_Duelling_DQN_loss, color = 'blue', label = 'filtered data')
-    plt.legend()
-    plt.xlabel('Training steps')
-
-    # rewards - not the most useful
-    plt.figure('Duelling_DQN rewards')
-    #plt.suptitle('DQN rewards')
-    plt.plot(Duelling_DQN_rewards, color = 'lavender', label = 'raw data')
-    plt.plot(filt_Duelling_DQN_rewards, color = 'blue', label = 'filtered data')
-    plt.legend()
-    plt.xlabel('Training steps')
-
-    Duelling_DQN_returns, Duelling_DQN_episodes_steps = np.genfromtxt('training_data/DQN/Duelling_DQN_training_data_returns_episode_length.csv', unpack=True, delimiter=',')
-
-    filt_Duelling_DQN_returns = moving_avg_filter(Duelling_DQN_returns)
-    filt_Duelling_DQN_episodes_steps = moving_avg_filter(Duelling_DQN_episodes_steps)
-
-    # returns
-    plt.figure('Duelling_DQN returns')
-    #plt.suptitle('DQN returns')
-    plt.plot(Duelling_DQN_returns, color = 'lavender', label = 'raw data')
-    plt.plot(filt_Duelling_DQN_returns, color = 'blue', label = 'filtered data')
-    plt.legend()
-    plt.xlabel('Episodes')
-
-    # episode steps
-    plt.figure('Duelling_DQN episodes steps')
-    #plt.suptitle('DQN episode steps')
-    plt.plot(Duelling_DQN_episodes_steps, color = 'lavender', label = 'raw data')
-    plt.plot(filt_Duelling_DQN_episodes_steps, color = 'blue', label = 'filtered data')
-    plt.legend()
-    plt.xlabel('Episodes')
-
 # PPO ############################################################
 if MODEL == 'PPO':
-    PPO_actor_loss, PPO_critic_loss = np.genfromtxt('training_data/PPO/PPO_training_data_losses.csv', unpack=True, delimiter=',')
+    PPO_actor_loss = np.genfromtxt('training_data/PPO/PPO_training_data_actor_loss.csv', unpack=False, delimiter=',')
+    PPO_critic_loss = np.genfromtxt('training_data/PPO/PPO_training_data_critic_loss.csv', unpack=False, delimiter=',')
 
     filt_PPO_actor_loss = moving_avg_filter(PPO_actor_loss, 0.025)
     filt_PPO_critic_loss = moving_avg_filter(PPO_critic_loss, 0.025)

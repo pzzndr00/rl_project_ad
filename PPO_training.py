@@ -13,8 +13,8 @@ import PPO
 
 # Constants and parameters #####################################################
 BUFFER_SIZE = 2048 # 1024 - 2048 # must be a multiple of BATCH_SIZE
-BATCH_SIZE = 128 # 64 - 128 - 256
-EPOCHS = 10
+BATCH_SIZE = 256 # 64 - 128 - 256
+EPOCHS = 5
 
 MAX_STEPS = 24576 # better if a multiple of BUFFER_SIZE, extra samples will be thrown away
 NUMBER_OF_TRAINING_STEPS = int(MAX_STEPS/BUFFER_SIZE)
@@ -23,28 +23,29 @@ LANES = 3
 
 STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
 
-DISCOUNT_FACTOR = 0.7
+DISCOUNT_FACTOR = 0.95
 
 ACTOR_LR = 2e-4
 CRITIC_LR = 5e-4
 
 # Entropy linear decay parameters
-LIN_DEC = False
+LIN_DEC = True
 
 ENTROPY_COEF_START = 0.05
 ENTROPY_COEF_END = 0
-DECAY_END_PERCENTAGE = 0.5
+DECAY_END_PERCENTAGE = 0.5 # indicates at which portion of training the entropy coefficient gets to its final value
 
-entropy_coef = 0.01
-
+entropy_coef = 0 # 0.01 # 0 = no entropy, standard clip loss # (if LIN_DEC = True entropy_coef is computed following the linear decay and this value is ignored)
 
 CLIP_EPS = 0.2
-ACTOR_REP = 20
-CRITIC_REP = 10
+ACTOR_REP = 25
+CRITIC_REP = 15
 
-CLIP_GRAD = True
+CLIP_GRAD = False
 
 critc_loss_function =  nn.MSELoss()  # nn.MSELoss() # nn.SmoothL1Loss() 
+
+ADV_EST = 'GAE'
 
 # GPU? # depending on the hardware it may even be better to run everything on the cpu
 device = torch.device(
@@ -77,18 +78,15 @@ env = gymnasium.make(env_name,
                         'lanes_count': LANES,
                         'absolute': False,
                         'duration': 40, "vehicles_count": 50},
-                        render_mode = 'human'
+                        #render_mode = 'human'
                         )
-
 env.unwrapped.config['high_speed_reward'] = 0.7
-
 
 print('>>> ENVIRONMENT INITIALIZED')
 
 # initialization of the replay buffer
 PPO_buffer = PPO.PPO_Buffer()
 print('>>> REPLAY BUFFER INITIALIZED')
-
 
 
 # Initialize your model
@@ -108,7 +106,7 @@ episode_return = 0
 actor_loss_vals_history = []
 critic_loss_vals_history = []
 
-# dara that is going to be collected for each episode
+# data that is going to be collected for each episode
 episodes_returns = []
 episodes_steps = []
 
@@ -146,8 +144,8 @@ for t in tqdm.trange(MAX_STEPS):
 
         # print(f'entropy coefficient = {entropy_coef}')
 
-        loss_actor_epoch_list, loss_critic_epoch_list = agent.training_step(PPO_buffer = PPO_buffer, batch_size = BATCH_SIZE, critic_loss_fcn=critc_loss_function, epochs=EPOCHS, entropy_coef=entropy_coef, clip_gradients=CLIP_GRAD)
-        
+        loss_actor_epoch_list, loss_critic_epoch_list = agent.training_step(PPO_buffer=PPO_buffer, batch_size=BATCH_SIZE, critic_loss_fcn=critc_loss_function, epochs=EPOCHS, entropy_coef=entropy_coef, clip_gradients=CLIP_GRAD, adv_est=ADV_EST, normalize_advantages=False)
+
         actor_loss_vals_history.extend(loss_actor_epoch_list)
         critic_loss_vals_history.extend(loss_critic_epoch_list)
 
@@ -179,7 +177,8 @@ print('>>> TRAINED PPO MODEL SAVED')
 
 if not os.path.exists('training_data/PPO'): os.makedirs('training_data/PPO')
 
-np.savetxt('training_data/PPO/PPO_training_data_losses.csv', np.transpose([actor_loss_vals_history, critic_loss_vals_history]), header= 'actor_loss, critic_loss' ,delimiter = ',')
+np.savetxt('training_data/PPO/PPO_training_data_actor_loss.csv', np.transpose(actor_loss_vals_history), header= 'actor_loss' ,delimiter = ',')
+np.savetxt('training_data/PPO/PPO_training_data_critic_loss.csv', np.transpose(critic_loss_vals_history), header='critic_loss')
 np.savetxt('training_data/PPO/PPO_training_data_returns_and_episodes_steps.csv', np.transpose([episodes_returns, episodes_steps]), header='returns,episode_length', delimiter=',')
 
 # plotting training data

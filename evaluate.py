@@ -11,9 +11,8 @@ import PPO
 
 # alternatives: 
 # 'DQN'
-# 'Duelling_DQN'
 # 'PPO'
-AGENT_TO_BE_TESTED = 'DQN'
+AGENT_TO_BE_TESTED = 'PPO'
 
 # Set the seed and create the environment
 np.random.seed(0)
@@ -58,15 +57,6 @@ match(AGENT_TO_BE_TESTED):
         DQN_agent.to(device=device)
         DQN_agent.eval()
 
-    case 'Duelling_DQN':
-        print('>>> DQN model test')
-        # model initialization
-        Duelling_DQN_agent = DQN.Duelling_DQN_agent(input_size=25, output_size=5)
-        Duelling_DQN_agent.load_state_dict(torch.load('trained_models_weights/trained_Duelling_DQN_agent.pt', weights_only = True)) 
-        Duelling_DQN_agent.to(device=device)
-        Duelling_DQN_agent.eval()
-
-
     case 'PPO':
         print('>>> PPO model test')
         # model initialization
@@ -106,10 +96,6 @@ while episode <= EPISODES:
         case 'DQN':
             # action selection DQN
             action = DQN_agent.act_greedy(state_tensor)
-
-        case 'Duelling_DQN':
-            # action selection Duelling DQN
-            action = Duelling_DQN_agent.act_greedy(state_tensor)
 
         case 'PPO':
             # action selection PPO

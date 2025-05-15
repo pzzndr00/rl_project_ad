@@ -106,9 +106,31 @@ class PPO_agent(nn.Module):
     def forward(self, x):
         return self.actor(x), self.critic(x)
 
-    def training_step(self, PPO_buffer:PPO_Buffer, batch_size:int = 128, critic_loss_fcn = nn.MSELoss(), epochs:int = 10, entropy_coef = 0, critic_max_grad_norm = 1, actor_max_grad_norm = 10, gae_lambda_smoothing = 0.95, clip_gradients:bool = True, normalize_advantages:bool = True):
+    def training_step(self, PPO_buffer:PPO_Buffer, batch_size:int = 128, critic_loss_fcn = nn.MSELoss(), epochs:int = 10, entropy_coef = 0, critic_max_grad_norm = 10, actor_max_grad_norm = 1, clip_gradients:bool = True, adv_est:str = 'GAE', normalize_advantages:bool = True, gae_lambda_smoothing = 0.95):
         """
-        
+        Performs "epochs" number of training epochs
+
+        Parameters
+        __________
+
+        PPO_buffer: buffer containing stored transitions
+        batch_size: minibatch size for training
+        critic_loss_fcn: loss function used for critic training
+        epochs: number of epochs that are going to be performed for every training step
+        entropy_coef: coefficient used in the computation of the actor PPO clip loss, favors "chaotic" policies and hence exploration
+        actor_max_grad_norm: if clip_gradients is True then is the value that is used to clip the actor gradient
+        critic_max_grad_norm: if clip_gradients is True then is the value that is used to clip the critic gradient
+        clip_gradients: if True then the gradients are going to be clipped
+        adv_est: can be either 'GAE' for the GAE advantage estimation or 'TD' for TD(0) advantages estimation
+        normalize_advantages: if True the estimated advantages are going to be normalized
+        gae_lambda_smoothing: smoothing coefficient for the GAE
+
+        Returns
+        _______
+
+        loss_actor_list: list containing the actor losses for all the different actor training iterations
+        loss_ctitic_list: list containing the critic losses for all the different critic training iterations
+
         """
 
         # data extraction and conversion to  ###################################
@@ -134,20 +156,31 @@ class PPO_agent(nn.Module):
         states_vals_cr = self.critic(state_buffer_tensor).reshape(-1) # column vector to row vector, critic output
         next_states_vals_cr = self.critic(next_state_buffer_tensor).reshape(-1) # column vector to row vector, critic output
 
-        rewards_to_go = reward_buffer_tensor + self.discount_factor * next_states_vals_cr*(mask_tensor)
+        rewards_to_go = reward_buffer_tensor + self.discount_factor * next_states_vals_cr * mask_tensor
         td_error = (rewards_to_go - states_vals_cr)
+        
+        match adv_est:
+            case 'GAE':
+                # gae advantages estimation:
+                advantages = torch.zeros(buffer_size, device=self.device)
+                next_adv = 0
+                for t in reversed(range(buffer_size)):
+                    advantages[t] = td_error[t] + self.discount_factor * gae_lambda_smoothing * (mask_tensor[t]) * next_adv
+                    next_adv = advantages[t]
 
-        # gae advantages estimation:
-        advantages = torch.zeros(buffer_size, device=self.device)
-  
-        next_adv = 0
-        for t in reversed(range(buffer_size)):
-            advantages[t] = td_error[t] + self.discount_factor * gae_lambda_smoothing * (mask_tensor[t]) * next_adv
-            next_adv = advantages[t]
+            case 'TD':
+                # td(0) advantage estimation
+                advantages = td_error
+
+            case _:
+                raise ValueError('adv_est needs to be either GAE or TD')
+        
+        
         
         if normalize_advantages:
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8) # normalization
-            advantages = advantages.detach()
+        
+        advantages = advantages.detach()
         
         # for each epoch
         loss_actor_list, loss_critic_list = [], []
@@ -186,8 +219,11 @@ class PPO_agent(nn.Module):
 
                     self.actor_opt.zero_grad()
                     loss_actor.backward()
+
                     if clip_gradients:
                         torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=actor_max_grad_norm)
+
+                    loss_actor_list.append(loss_actor.detach().cpu())
                     
                     self.actor_opt.step()
                     
@@ -202,12 +238,14 @@ class PPO_agent(nn.Module):
                     
                     self.critic.zero_grad()
                     loss_critic.backward()
+
                     if clip_gradients:
                         torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=critic_max_grad_norm)
+
+                    loss_critic_list.append(loss_critic.detach().cpu())
+                    
                     self.critic_opt.step()
 
-            loss_actor_list.append(loss_actor.detach().cpu())
-            loss_critic_list.append(loss_critic.detach().cpu())
 
         return loss_actor_list, loss_critic_list
 
