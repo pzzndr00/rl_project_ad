@@ -206,13 +206,23 @@ class PPO_agent(nn.Module):
 
                     importance_sampling_ratio = torch.exp(action_log_probs_ac[[np.arange(batch_size), action_batch]] - action_log_probs_batch_tensor)
 
-                    raise NotImplementedError
+                    
+                    # loss_actor = -torch.mean(   torch.min(
+                    #                                 advantages[indices] * importance_sampling_ratio, 
+                    #                                 advantages[indices] * torch.clip(importance_sampling_ratio, min = 1-self.clip_eps, max = 1+self.clip_eps)
+                    #                                 )
+                    #                 )
+                    
+                    pos_advantage_mask = torch.Tensor.int(advantages[indices] >= 0).to(device=self.device)
+                    g = (1+self.clip_eps)*advantages[indices]*pos_advantage_mask + (1-self.clip_eps)*advantages[indices]*(1-pos_advantage_mask)
+                    
                     loss_actor = -torch.mean(   torch.min(
-                                                    advantages[indices] * importance_sampling_ratio, 
-                                                    advantages[indices] * torch.clip(importance_sampling_ratio, min = 1-self.clip_eps, max = 1+self.clip_eps)
+                                                    importance_sampling_ratio*advantages[indices],
+                                                    g
                                                     )
-                                    )
 
+                                        )
+                    
                     if entropy_coef > 0:
                         dist = torch.distributions.Categorical(action_probs_ac)
                         entropy_mean = dist.entropy().mean()

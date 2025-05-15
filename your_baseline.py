@@ -1,4 +1,4 @@
-# Andrea Pizzolotto Baseline
+# Andrea Pizzolotto Baseline for highway-v0
 import numpy as np
 import random
 import torch

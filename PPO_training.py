@@ -29,7 +29,7 @@ ACTOR_LR = 2e-4
 CRITIC_LR = 5e-4
 
 # Entropy linear decay parameters
-LIN_DEC = True
+LIN_DEC = False
 
 ENTROPY_COEF_START = 0.05
 ENTROPY_COEF_END = 0.01
@@ -38,8 +38,8 @@ DECAY_END_PERCENTAGE = 0.5 # indicates at which portion of training the entropy 
 entropy_coef = 0 # 0.01 # 0 = no entropy, standard clip loss # (if LIN_DEC = True entropy_coef is computed following the linear decay and this value is ignored)
 
 CLIP_EPS = 0.1
-ACTOR_REP = 15
-CRITIC_REP = 5
+ACTOR_REP = 20
+CRITIC_REP = 10
 
 CLIP_GRAD = False
 
@@ -78,7 +78,7 @@ env = gymnasium.make(env_name,
                         'lanes_count': LANES,
                         'absolute': False,
                         'duration': 40, "vehicles_count": 50},
-                        #render_mode = 'human'
+                        render_mode = 'human'
                         )
 env.unwrapped.config['high_speed_reward'] = 0.7
 
