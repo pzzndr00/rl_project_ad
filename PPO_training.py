@@ -12,8 +12,8 @@ import os
 import PPO
 
 # Constants and parameters #####################################################
-BUFFER_SIZE = 1024 # 1024 - 2048 # better if a multiple of BATCH_SIZE
-BATCH_SIZE = 128 # 64 - 128 - 256
+BUFFER_SIZE = 2048 # 1024 - 2048 # better if a multiple of BATCH_SIZE
+BATCH_SIZE = 256 # 64 - 128 - 256
 EPOCHS = 10
 
 MAX_STEPS = 24576 # better if a multiple of BUFFER_SIZE, extra samples will be thrown away
@@ -35,13 +35,13 @@ ENTROPY_COEF_START = 0.01
 ENTROPY_COEF_END = 0
 DECAY_END_PERCENTAGE = 0.5 # indicates at which portion of training the entropy coefficient gets to its final value
 
-entropy_coef = 0.01 # 0.01 # 0 = no entropy, standard clip loss # (if LIN_DEC = True entropy_coef is computed following the linear decay and this value is ignored)
+entropy_coef = 0 # 0.01 # 0 = no entropy, standard clip loss # (if LIN_DEC = True entropy_coef is computed following the linear decay and this value is ignored)
 
 CLIP_EPS = 0.2
-ACTOR_REP = 1
-CRITIC_REP = 1
+ACTOR_REP = 20
+CRITIC_REP = 10
 
-CLIP_GRAD = True
+CLIP_GRAD = False
 
 critc_loss_function =  nn.MSELoss()  # nn.MSELoss() # nn.SmoothL1Loss() 
 
@@ -81,7 +81,7 @@ env = gymnasium.make(env_name,
                         'duration': 40, "vehicles_count": 50},
                         render_mode = 'human'
                         )
-
+env.unwrapped.config['high_speed_reward'] = 0.75
 print('>>> ENVIRONMENT INITIALIZED')
 
 # initialization of the replay buffer
