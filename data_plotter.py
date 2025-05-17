@@ -101,8 +101,8 @@ if MODEL == 'PPO':
     PPO_actor_loss = np.genfromtxt('training_data/PPO/PPO_training_data_actor_loss.csv', unpack=False, delimiter=',')
     PPO_critic_loss = np.genfromtxt('training_data/PPO/PPO_training_data_critic_loss.csv', unpack=False, delimiter=',')
 
-    filt_PPO_actor_loss = moving_avg_filter(PPO_actor_loss, 0.025)
-    filt_PPO_critic_loss = moving_avg_filter(PPO_critic_loss, 0.025)
+    filt_PPO_actor_loss = moving_avg_filter(PPO_actor_loss, 0.05)
+    filt_PPO_critic_loss = moving_avg_filter(PPO_critic_loss, 0.05)
 
 
     # PPO actor loss
@@ -124,8 +124,8 @@ if MODEL == 'PPO':
 
     PPO_returns, PPO_episodes_steps = np.genfromtxt('training_data/PPO/PPO_training_data_returns_and_episodes_steps.csv', unpack=True, delimiter=',')
 
-    filt_PPO_returns = moving_avg_filter(PPO_returns)
-    filt_PPO_episodes_steps = moving_avg_filter(PPO_episodes_steps)
+    filt_PPO_returns = moving_avg_filter(PPO_returns, 0.025)
+    filt_PPO_episodes_steps = moving_avg_filter(PPO_episodes_steps, 0.025)
 
     # returns
     plt.figure('PPO returns')

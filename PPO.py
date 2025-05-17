@@ -137,9 +137,10 @@ class PPO_agent(nn.Module):
 
         buffer_size = PPO_buffer.get_size()
         batch_size = min(buffer_size, batch_size)
-
+        
+        # Not needed anymore
         # check that buffer_size is multiple of batch_size
-        if not buffer_size % batch_size == 0: raise Exception('PPO.PPO_agent.training_epoch() error buffer_size must be multiple of batch_size')
+        # if not buffer_size % batch_size == 0: raise Exception('PPO.PPO_agent.training_epoch() error buffer_size must be multiple of batch_size')
 
         # lists to tensors
         state_buffer_tensor = torch.stack(PPO_buffer.state_tensors_list, dim=0).to(device=self.device).to(torch.float) # for each row a step 
@@ -156,8 +157,8 @@ class PPO_agent(nn.Module):
         states_vals_cr = self.critic(state_buffer_tensor).reshape(-1) # column vector to row vector, critic output
         next_states_vals_cr = self.critic(next_state_buffer_tensor).reshape(-1) # column vector to row vector, critic output
 
-        rewards_to_go = reward_buffer_tensor + self.discount_factor * next_states_vals_cr * mask_tensor
-        td_error = (rewards_to_go - states_vals_cr)
+        # rewards_to_go = reward_buffer_tensor + self.discount_factor * next_states_vals_cr * mask_tensor
+        td_error = (reward_buffer_tensor + self.discount_factor * next_states_vals_cr * mask_tensor - states_vals_cr)
         
         match adv_est:
             case 'GAE':
@@ -175,24 +176,22 @@ class PPO_agent(nn.Module):
             case _:
                 raise ValueError('adv_est needs to be either GAE or TD')
         
-        
+        rewards_to_go = (advantages + states_vals_cr).detach()
         
         if normalize_advantages:
-            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8) # normalization
+            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8) # advantages normalization
         
         advantages = advantages.detach()
         
         # for each epoch
         loss_actor_list, loss_critic_list = [], []
         for _ in range(epochs):
-            # get shuffled indeces
-            shuffled_indices = PPO_buffer.get_shuffled_indices()
-            shuffled_indices = shuffled_indices.reshape(-1, batch_size) # iters for epoch x batch_size
 
             #  1 epoch
-            for i in range(shuffled_indices.shape[0]):
+            for i in range(int(buffer_size/batch_size)):
 
-                indices = shuffled_indices[i].astype(int)
+                # get shuffled indeces
+                indices = np.random.choice(range(buffer_size), size = batch_size, replace=False)
 
                 state_batch_tensor = state_buffer_tensor[indices]
                 action_batch = action_buffer[indices]
@@ -201,30 +200,30 @@ class PPO_agent(nn.Module):
                 for _ in range(self.actor_rep):
 
                     action_probs_ac = self.actor(state_batch_tensor)
+                    dist = torch.distributions.Categorical(action_probs_ac)
 
-                    action_log_probs_ac = torch.log(action_probs_ac)
+                    action_log_probs = dist.log_prob(torch.from_numpy(action_batch).to(device=self.device))
 
-                    importance_sampling_ratio = torch.exp(action_log_probs_ac[[np.arange(batch_size), action_batch]] - action_log_probs_batch_tensor)
+                    importance_sampling_ratio = torch.exp(action_log_probs - action_log_probs_batch_tensor)
 
-                    
-                    # loss_actor = -torch.mean(   torch.min(
-                    #                                 advantages[indices] * importance_sampling_ratio, 
-                    #                                 advantages[indices] * torch.clip(importance_sampling_ratio, min = 1-self.clip_eps, max = 1+self.clip_eps)
-                    #                                 )
-                    #                 )
-                    
-                    pos_advantage_mask = torch.Tensor.int(advantages[indices] >= 0).to(device=self.device)
-                    g = (1+self.clip_eps)*advantages[indices]*pos_advantage_mask + (1-self.clip_eps)*advantages[indices]*(1-pos_advantage_mask)
                     
                     loss_actor = -torch.mean(   torch.min(
-                                                    importance_sampling_ratio*advantages[indices],
-                                                    g
+                                                    advantages[indices] * importance_sampling_ratio, 
+                                                    advantages[indices] * torch.clip(importance_sampling_ratio, min = 1-self.clip_eps, max = 1+self.clip_eps)
                                                     )
+                                    )
+                    
+                    # pos_advantage_mask = torch.Tensor.int(advantages[indices] >= 0).to(device=self.device)
+                    # g = (1+self.clip_eps)*advantages[indices]*pos_advantage_mask + (1-self.clip_eps)*advantages[indices]*(1-pos_advantage_mask)
+                    
+                    # loss_actor = -torch.mean(   torch.min(
+                    #                                 importance_sampling_ratio*advantages[indices],
+                    #                                 g
+                    #                                 )
 
-                                        )
+                    #                     )
                     
                     if entropy_coef > 0:
-                        dist = torch.distributions.Categorical(action_probs_ac)
                         entropy_mean = dist.entropy().mean()
                         loss_actor -= entropy_coef*entropy_mean # promotes exploration
 
@@ -240,12 +239,12 @@ class PPO_agent(nn.Module):
                     
 
                 # critic parameters update
-                returns_batch = rewards_to_go[indices].detach()
+                
                 for _ in range(self.critic_rep):
 
                     new_states_batch_vals_cr = self.critic(state_batch_tensor).reshape(-1) # column vector to row vector
                     
-                    loss_critic = critic_loss_fcn(new_states_batch_vals_cr, returns_batch)
+                    loss_critic = critic_loss_fcn(new_states_batch_vals_cr, rewards_to_go[indices])
                     
                     self.critic.zero_grad()
                     loss_critic.backward()

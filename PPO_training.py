@@ -12,8 +12,8 @@ import os
 import PPO
 
 # Constants and parameters #####################################################
-BUFFER_SIZE = 2048 # 1024 - 2048 # must be a multiple of BATCH_SIZE
-BATCH_SIZE = 256 # 64 - 128 - 256
+BUFFER_SIZE = 1024 # 1024 - 2048 # better if a multiple of BATCH_SIZE
+BATCH_SIZE = 128 # 64 - 128 - 256
 EPOCHS = 10
 
 MAX_STEPS = 24576 # better if a multiple of BUFFER_SIZE, extra samples will be thrown away
@@ -23,7 +23,7 @@ LANES = 3
 
 STATE_DIMENSIONALITY = 25 # 5 cars * 5 features
 
-DISCOUNT_FACTOR = 0.85
+DISCOUNT_FACTOR = 0.99
 
 ACTOR_LR = 2e-4
 CRITIC_LR = 5e-4
@@ -31,20 +31,21 @@ CRITIC_LR = 5e-4
 # Entropy linear decay parameters
 LIN_DEC = False
 
-ENTROPY_COEF_START = 0.05
-ENTROPY_COEF_END = 0.01
+ENTROPY_COEF_START = 0.01
+ENTROPY_COEF_END = 0
 DECAY_END_PERCENTAGE = 0.5 # indicates at which portion of training the entropy coefficient gets to its final value
 
-entropy_coef = 0 # 0.01 # 0 = no entropy, standard clip loss # (if LIN_DEC = True entropy_coef is computed following the linear decay and this value is ignored)
+entropy_coef = 0.01 # 0.01 # 0 = no entropy, standard clip loss # (if LIN_DEC = True entropy_coef is computed following the linear decay and this value is ignored)
 
-CLIP_EPS = 0.1
-ACTOR_REP = 20
-CRITIC_REP = 10
+CLIP_EPS = 0.2
+ACTOR_REP = 1
+CRITIC_REP = 1
 
-CLIP_GRAD = False
+CLIP_GRAD = True
 
 critc_loss_function =  nn.MSELoss()  # nn.MSELoss() # nn.SmoothL1Loss() 
 
+# either 'TD' or 'GAE'
 ADV_EST = 'GAE'
 
 # GPU? # depending on the hardware it may even be better to run everything on the cpu
@@ -80,7 +81,6 @@ env = gymnasium.make(env_name,
                         'duration': 40, "vehicles_count": 50},
                         render_mode = 'human'
                         )
-env.unwrapped.config['high_speed_reward'] = 0.7
 
 print('>>> ENVIRONMENT INITIALIZED')
 
@@ -114,10 +114,10 @@ training_steps = 0
 
 for t in tqdm.trange(MAX_STEPS):
     episode_steps += 1
-
+    
     # conversion of the state numpy array into a pyTorch tensor
     state_tensor = torch.from_numpy(state).to(device=device)
-
+    
     # Select the action to be performed by the agent
     action, action_log_prob = agent.act(state_tensor=state_tensor)
 
@@ -140,7 +140,7 @@ for t in tqdm.trange(MAX_STEPS):
         if LIN_DEC:
             if entropy_coef > ENTROPY_COEF_END:
                 entropy_coef = ENTROPY_COEF_START + (ENTROPY_COEF_END - ENTROPY_COEF_START) * training_steps / int(NUMBER_OF_TRAINING_STEPS*DECAY_END_PERCENTAGE)
-                if entropy_coef < ENTROPY_COEF_END: entropy_coef = ENTROPY_COEF_END
+            if entropy_coef < ENTROPY_COEF_END: entropy_coef = ENTROPY_COEF_END
 
         # print(f'entropy coefficient = {entropy_coef}')
 
